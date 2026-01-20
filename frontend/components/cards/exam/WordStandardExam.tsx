@@ -12,7 +12,7 @@ export default function WordStandardExam({ value, isBusy, onAnswer }: Props) {
   const [isFlipped, setIsFlipped] = useState(false);
 
   return (
-    <div className="relative rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+    <div className="relative flex h-full flex-col justify-between rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
       <div className="text-xs uppercase tracking-[0.2em] text-white/60">
         Define the word
       </div>

@@ -49,17 +49,24 @@ export default function AudioButton({ src, autoPlay = false }: Props) {
     <button
       type="button"
       onClick={handleToggle}
-      className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-xs uppercase tracking-[0.2em] text-white/70 backdrop-blur transition hover:border-white/40 hover:text-white"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/80 backdrop-blur transition hover:border-white/40 hover:text-white"
       aria-label={isPlaying ? "Stop audio" : "Play audio"}
     >
-      <span className="relative flex h-2 w-2">
-        <span
-          className={`absolute inline-flex h-full w-full rounded-full ${
-            isPlaying ? "bg-[#2b59ff]" : "bg-white/70"
-          }`}
-        />
-      </span>
-      {isPlaying ? "Stop" : "Play"}
+      {isPlaying ? (
+        <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+          <path
+            d="M8 7h3v10H8zM13 7h3v10h-3z"
+            fill="currentColor"
+          />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+          <path
+            d="M8 6.5v11l9-5.5z"
+            fill="currentColor"
+          />
+        </svg>
+      )}
     </button>
   );
 }

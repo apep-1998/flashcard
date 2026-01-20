@@ -30,7 +30,7 @@ export default function SpellingExam({ value, isBusy, onSubmit }: Props) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="relative rounded-2xl border border-white/10 bg-white/5 p-6 text-center"
+      className="relative flex h-full flex-col justify-between rounded-2xl border border-white/10 bg-white/5 p-6 text-center"
     >
       <div className="text-xs uppercase tracking-[0.2em] text-white/60">
         Listen and spell

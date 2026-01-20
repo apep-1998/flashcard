@@ -15,7 +15,7 @@ export default function StandardExam({ value, isBusy, onAnswer }: Props) {
   const backAudio = value.back_voice_file_url;
 
   return (
-    <div className="relative rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+    <div className="relative flex h-full flex-col justify-between rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
       <div className="text-xs uppercase tracking-[0.2em] text-white/60">
         Standard card
       </div>
