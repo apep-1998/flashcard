@@ -219,7 +219,7 @@ export default function CardsPage() {
       return;
     }
 
-    const configs: CardConfig[] = [];
+    const configs: Array<{ config: CardConfig; groupId?: string }> = [];
     const errors: string[] = [];
     for (const [index, item] of parsedJson.entries()) {
       if (!item || typeof item !== "object") {
@@ -227,7 +227,12 @@ export default function CardsPage() {
         continue;
       }
       const normalized = normalizeConfigInput(item as Record<string, unknown>);
-      const result = cardConfigSchema.safeParse(normalized);
+      const groupId =
+        typeof normalized.group_id === "string"
+          ? normalized.group_id.trim()
+          : undefined;
+      const { group_id: _groupId, ...configInput } = normalized;
+      const result = cardConfigSchema.safeParse(configInput);
       if (!result.success) {
         const issue = result.error.issues?.[0];
         const message = issue?.message ?? "Invalid card config.";
@@ -235,7 +240,7 @@ export default function CardsPage() {
         errors.push(`Item ${index}: ${path} - ${message}`);
         continue;
       }
-      configs.push(result.data);
+      configs.push({ config: result.data, groupId });
     }
 
     if (errors.length) {
@@ -244,16 +249,17 @@ export default function CardsPage() {
     }
 
     const now = new Date().toISOString();
-    const draftCards = configs.map((configItem, index) => ({
+    const fallbackGroupId = groupId.trim() || "default-group";
+    const draftCards = configs.map(({ config, groupId: itemGroupId }, index) => ({
       boxId: selectedBoxId,
       userId: "mock-user",
       finished: false,
       createdAt: now,
       updatedAt: now,
       level: 0,
-      groupId: groupId.trim() || "default-group",
+      groupId: itemGroupId ?? fallbackGroupId,
       nextReviewTime: null,
-      config: configItem,
+      config,
       groupIndex: index,
     }));
 
@@ -273,16 +279,16 @@ export default function CardsPage() {
 
     try {
       await Promise.all(
-        configs.map((configItem) =>
+        configs.map(({ config, groupId: itemGroupId }) =>
           apiFetch(`${getApiBaseUrl()}/api/cards/`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               box_id: selectedBoxId,
-              group_id: groupId.trim(),
+              group_id: itemGroupId ?? fallbackGroupId,
               finished: false,
               level: 0,
-              config: configItem,
+              config,
             }),
           }),
         ),
