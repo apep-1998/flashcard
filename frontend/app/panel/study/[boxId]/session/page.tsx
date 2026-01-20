@@ -83,6 +83,7 @@ export default function StudySessionPage() {
   const [showIncorrect, setShowIncorrect] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isReviewing, setIsReviewing] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CardItem | null>(null);
   const [editTarget, setEditTarget] = useState<CardItem | null>(null);
@@ -214,6 +215,8 @@ export default function StudySessionPage() {
   };
 
   const handleReviewUpdate = async (cardId: number, correct: boolean) => {
+    if (isReviewing) return false;
+    setIsReviewing(true);
     try {
       const response = await apiFetch(
         `${getApiBaseUrl()}/api/cards/${cardId}/review/`,
@@ -233,6 +236,8 @@ export default function StudySessionPage() {
         err instanceof Error ? err.message : "Unable to update card.",
       );
       return false;
+    } finally {
+      setIsReviewing(false);
     }
   };
 
@@ -468,7 +473,7 @@ export default function StudySessionPage() {
         )}
 
         {!isLoading && currentCard && reviewState && (
-          <div className="rounded-3xl border border-white/10 bg-[#0b1017] p-6 space-y-4">
+          <div className="mx-auto flex min-h-[520px] w-full max-w-3xl flex-col items-center gap-6 rounded-3xl border border-white/10 bg-[#0b1017] p-8 text-center">
             <div className="text-xs uppercase tracking-[0.2em] text-white/60">
               Review
             </div>
@@ -568,13 +573,14 @@ export default function StudySessionPage() {
         )}
 
         {!isLoading && currentCard && !reviewState && (
-          <div className="rounded-3xl border border-white/10 bg-[#0b1017] p-6 space-y-4">
+          <div className="mx-auto flex min-h-[520px] w-full max-w-3xl flex-col items-center gap-6 rounded-3xl border border-white/10 bg-[#0b1017] p-8 text-center">
             <div className="text-xs uppercase tracking-[0.2em] text-white/60">
               {currentCard.config.type}
             </div>
             {currentCard.config.type === "spelling" ? (
               <SpellingExam
                 value={currentCard.config as SpellingConfig}
+                isBusy={isReviewing}
                 onSubmit={(answer, isCorrect) =>
                   handleSpellingSubmit(
                     currentCard.config as SpellingConfig,
@@ -586,6 +592,7 @@ export default function StudySessionPage() {
             ) : currentCard.config.type === "multiple-choice" ? (
               <MultipleChoiceExam
                 value={currentCard.config as MultipleChoiceConfig}
+                isBusy={isReviewing}
                 onSelect={(answer, isCorrect) =>
                   handleMultipleChoiceSelect(
                     currentCard.config as MultipleChoiceConfig,
@@ -598,17 +605,20 @@ export default function StudySessionPage() {
               <StandardExam
                 key={`standard-${currentCard.id}`}
                 value={currentCard.config as StandardConfig}
+                isBusy={isReviewing}
                 onAnswer={handleStandardAnswer}
               />
             ) : currentCard.config.type === "word-standard" ? (
               <WordStandardExam
                 key={`word-standard-${currentCard.id}`}
                 value={currentCard.config as WordStandardConfig}
+                isBusy={isReviewing}
                 onAnswer={handleStandardAnswer}
               />
             ) : currentCard.config.type === "german-verb-conjugator" ? (
               <GermanVerbConjugatorExam
                 value={currentCard.config as GermanVerbConfig}
+                isBusy={isReviewing}
                 onSubmit={(answers, isCorrect) =>
                   handleGermanVerbSubmit(
                     answers,

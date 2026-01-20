@@ -33,18 +33,20 @@ export default function AiReviewerExam({ value, onSubmit }: Props) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-white/10 bg-white/5 p-4"
+      className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center"
     >
       <div className="text-xs uppercase tracking-[0.2em] text-white/60">
         AI review
       </div>
-      <div className="mt-2 text-sm text-white/70">{value.question || "—"}</div>
-      <label className="mt-4 block text-sm text-white/70">
-        Your answer
+      <div className="mt-3 text-lg font-semibold text-white">
+        {value.question || "—"}
+      </div>
+      <label className="mt-6 block text-sm text-white/70">
+        <span className="text-base font-semibold text-white">Your answer</span>
         <textarea
           value={answer}
           onChange={(event) => setAnswer(event.target.value)}
-          className="mt-2 min-h-[160px] w-full resize-none rounded-2xl border border-white/10 bg-[#0f141b] px-4 py-3 text-sm text-white outline-none transition focus:border-white/40"
+          className="mt-3 min-h-[180px] w-full resize-none rounded-2xl border border-white/10 bg-[#0f141b] px-4 py-3 text-base text-white outline-none transition focus:border-white/40"
           placeholder="Write your answer here..."
         />
       </label>
@@ -58,9 +60,9 @@ export default function AiReviewerExam({ value, onSubmit }: Props) {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="mt-4 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-6 rounded-full border border-white/20 bg-white/10 px-5 py-3 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isSubmitting ? "Checking..." : "Submit"}
+        {isSubmitting ? "Reviewing..." : "Submit"}
       </button>
     </form>
   );

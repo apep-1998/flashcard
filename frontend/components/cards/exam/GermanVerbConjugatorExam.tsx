@@ -4,12 +4,17 @@ import type { GermanVerbConfig } from "@/lib/schemas/cards";
 
 type Props = {
   value: GermanVerbConfig;
+  isBusy?: boolean;
   onSubmit: (answers: Record<string, string>, isCorrect: boolean) => void;
 };
 
 const normalize = (input: string) => input.trim().toLowerCase();
 
-export default function GermanVerbConjugatorExam({ value, onSubmit }: Props) {
+export default function GermanVerbConjugatorExam({
+  value,
+  isBusy,
+  onSubmit,
+}: Props) {
   const fields = useMemo(
     () => [
       { key: "ich", label: "ich", expected: value.ich },
@@ -50,19 +55,21 @@ export default function GermanVerbConjugatorExam({ value, onSubmit }: Props) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-white/10 bg-white/5 p-4"
+      className="relative rounded-2xl border border-white/10 bg-white/5 p-6 text-center"
     >
       <div className="text-xs uppercase tracking-[0.2em] text-white/60">
         Conjugate the verb
       </div>
-      <div className="mt-2 text-lg font-semibold">{value.verb || "—"}</div>
+      <div className="mt-3 text-2xl font-semibold text-white">
+        {value.verb || "—"}
+      </div>
       {value.voice_file_url && (
-        <div className="mt-3">
+        <div className="absolute right-4 top-4">
           <AudioButton src={value.voice_file_url} />
         </div>
       )}
       <div className="text-sm text-white/60">Fill all six forms.</div>
-      <div className="mt-4 grid gap-3 md:grid-cols-2">
+      <div className="mt-5 grid gap-3 text-left md:grid-cols-2">
         {shuffledFields.map((field) => (
           <label
             key={field.key}
@@ -74,7 +81,8 @@ export default function GermanVerbConjugatorExam({ value, onSubmit }: Props) {
             <input
               value={answers[field.key] ?? ""}
               onChange={(event) => handleChange(field.key, event.target.value)}
-              className="mt-2 w-full rounded-xl border border-white/10 bg-[#0f141b] px-3 py-2 text-sm text-white outline-none transition focus:border-white/40"
+              disabled={isBusy}
+              className="mt-2 w-full rounded-xl border border-white/10 bg-[#0f141b] px-3 py-2 text-base font-semibold text-white outline-none transition focus:border-white/40"
               placeholder="Type conjugation"
             />
           </label>
@@ -82,9 +90,10 @@ export default function GermanVerbConjugatorExam({ value, onSubmit }: Props) {
       </div>
       <button
         type="submit"
-        className="mt-4 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white"
+        disabled={isBusy}
+        className="mt-6 rounded-full border border-white/20 bg-white/10 px-5 py-3 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
       >
-        Evaluate
+        {isBusy ? "Saving..." : "Evaluate"}
       </button>
       {formError && (
         <div className="mt-3 rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-2 text-xs text-red-100">
