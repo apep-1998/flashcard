@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Box, Card, CardActivity
+from .models import Box, Card, CardActivity, AiReviewLog
 
 
 @admin.register(Box)
@@ -28,3 +28,10 @@ class CardActivityAdmin(admin.ModelAdmin):
     list_display = ("id", "card", "user", "action", "card_level", "created_at")
     search_fields = ("card__id", "user__email", "action")
     list_filter = ("action", "created_at")
+
+
+@admin.register(AiReviewLog)
+class AiReviewLogAdmin(admin.ModelAdmin):
+    list_display = ("id", "card", "user", "card_level", "created_at")
+    search_fields = ("card__id", "user__email")
+    list_filter = ("created_at",)

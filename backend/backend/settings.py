@@ -144,6 +144,11 @@ CORS_ALLOWED_ORIGINS = [
     "https://flashcardbackend.surenatech.de",
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "https://flashcardbackend.surenatech.de",
+]
+
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (

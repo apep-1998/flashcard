@@ -9,7 +9,7 @@ class Box(models.Model):
     )
     name = models.CharField(max_length=120)
     description = models.TextField(blank=True)
-    share_code = models.CharField(max_length=64, blank=True, unique=True)
+    share_code = models.CharField(max_length=64, blank=True, null=True, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -100,3 +100,28 @@ class CardActivity(models.Model):
 
     def __str__(self):
         return f"{self.action} (card {self.card_id})"
+
+
+class AiReviewLog(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="ai_review_logs",
+    )
+    card = models.ForeignKey(
+        Card, on_delete=models.CASCADE, related_name="ai_review_logs"
+    )
+    card_level = models.PositiveIntegerField()
+    answer = models.TextField()
+    review = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "created_at"]),
+            models.Index(fields=["card", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"AI review {self.id} (card {self.card_id})"

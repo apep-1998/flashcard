@@ -11,7 +11,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from .ai_models import Review, prompt_ai_review
-from .models import Box, Card, CardActivity
+from .models import Box, Card, CardActivity, AiReviewLog
 from .serializers import BoxSerializer, CardSerializer
 
 
@@ -340,8 +340,16 @@ class CardViewSet(viewsets.ModelViewSet):
         )
 
         review = Review.model_validate_json(response.text)
+        review_data = review.model_dump()
+        AiReviewLog.objects.create(
+            user=request.user,
+            card=card,
+            card_level=card.level,
+            answer=answer,
+            review=review_data,
+        )
 
-        return Response(review.model_dump())
+        return Response(review_data)
 
     @action(detail=False, methods=["get"], url_path="ready-summary")
     def ready_summary(self, request):
