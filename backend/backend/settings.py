@@ -29,7 +29,11 @@ SECRET_KEY = "django-insecure-t&tiljqmbaq4q)46+j*@*o42cj&djm4bx9*z!o_d+ro)2mhl*i
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["flashcardbackend.surenatech.de"]
+ALLOWED_HOSTS = [
+    "flashcardbackend.surenatech.de",
+    "backend",
+    "localhost",
+]
 
 
 # Application definition
@@ -52,6 +56,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -130,12 +135,15 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "https://flashcardbackend.surenatech.de",
 ]
+
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (

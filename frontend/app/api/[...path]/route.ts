@@ -9,7 +9,7 @@ const proxy = async (
   const { path } = await context.params;
   const targetPath = path.join("/");
   const url = new URL(request.url);
-  const targetUrl = new URL(`${BACKEND_URL}/api/${targetPath}`);
+  const targetUrl = new URL(`${BACKEND_URL}/api/${targetPath}/`);
   targetUrl.search = url.search;
 
   const headers = new Headers(request.headers);
@@ -18,14 +18,14 @@ const proxy = async (
   const body =
     request.method === "GET" || request.method === "HEAD"
       ? undefined
-      : request.body;
+      : await request.arrayBuffer();
 
   const response = await fetch(targetUrl, {
     method: request.method,
     headers,
     body,
     redirect: "manual",
-  });
+  } as RequestInit & { duplex?: "half" });
 
   const responseHeaders = new Headers(response.headers);
   responseHeaders.delete("content-encoding");

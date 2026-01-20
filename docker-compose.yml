@@ -32,6 +32,7 @@ services:
         condition: service_healthy
     command: >
       sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
              gunicorn backend.wsgi:application --bind 0.0.0.0:8000"
     ports:
       - "8000:8000"
@@ -43,7 +44,7 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
       args:
-        NEXT_PUBLIC_API_BASE_URL: /api
+        NEXT_PUBLIC_API_BASE_URL: ""
     container_name: learning_fast_frontend
     restart: unless-stopped
     depends_on:

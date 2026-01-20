@@ -6,7 +6,7 @@ type Tokens = {
 const TOKEN_KEY = "learning-fast.tokens";
 
 export const getApiBaseUrl = () =>
-  process.env.NEXT_PUBLIC_API_BASE_URL || "/api";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
 export const getStoredTokens = (): Tokens | null => {
   if (typeof window === "undefined") return null;
