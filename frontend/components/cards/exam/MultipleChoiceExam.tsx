@@ -21,7 +21,9 @@ export default function MultipleChoiceExam({ value, onSelect }: Props) {
       <div className="mt-2 text-sm text-white/70">{value.question || "—"}</div>
       {(value.image_file_url || value.voice_file_url) && (
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          {value.voice_file_url && <AudioButton src={value.voice_file_url} />}
+          {value.voice_file_url && (
+            <AudioButton src={value.voice_file_url} autoPlay />
+          )}
           {value.image_file_url && (
             <img
               src={value.image_file_url}
