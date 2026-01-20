@@ -31,7 +31,7 @@ export default function WordStandardCreate({ value, onChange }: Props) {
       </label>
       <VoiceInput
         label="Voice file"
-        value={value.voice_file_url}
+        value={value.voice_file_url ?? ""}
         onChange={(next) => onChange({ ...value, voice_file_url: next })}
         ttsValue={value.text_to_speech ?? ""}
         onChangeTts={(next) => onChange({ ...value, text_to_speech: next })}

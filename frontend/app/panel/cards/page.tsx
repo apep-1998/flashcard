@@ -265,7 +265,7 @@ export default function CardsPage() {
       setFormError(
         schemaErrors[0].parsed.success
           ? "Invalid card data."
-          : schemaErrors[0].parsed.error.errors[0]?.message ??
+          : schemaErrors[0].parsed.error.issues?.[0]?.message ??
               `Invalid card at index ${schemaErrors[0].index}.`,
       );
       return;
