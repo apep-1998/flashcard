@@ -36,7 +36,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - backend_media:/app/backend/media
+      - /opt/media:/app/backend/media
 
   frontend:
     build:
@@ -53,4 +53,3 @@ services:
 
 volumes:
   postgres_data:
-  backend_media:
