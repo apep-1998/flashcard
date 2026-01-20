@@ -29,7 +29,7 @@ SECRET_KEY = "django-insecure-t&tiljqmbaq4q)46+j*@*o42cj&djm4bx9*z!o_d+ro)2mhl*i
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["flashcardbackend.surenatech.de"]
 
 
 # Application definition

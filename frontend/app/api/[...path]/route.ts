@@ -4,9 +4,10 @@ const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 
 const proxy = async (
   request: NextRequest,
-  { params }: { params: { path: string[] } },
+  context: { params: Promise<{ path: string[] }> },
 ) => {
-  const targetPath = params.path.join("/");
+  const { path } = await context.params;
+  const targetPath = path.join("/");
   const url = new URL(request.url);
   const targetUrl = new URL(`${BACKEND_URL}/api/${targetPath}`);
   targetUrl.search = url.search;
