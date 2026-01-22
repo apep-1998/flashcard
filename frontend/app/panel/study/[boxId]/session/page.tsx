@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Container from "@mui/material/Container";
 import SpellingExam from "@/components/cards/exam/SpellingExam";
@@ -61,7 +61,14 @@ export default function StudySessionPage() {
   const [showCorrect, setShowCorrect] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [isReviewing, setIsReviewing] = useState(false);
+  const reviewQueueRef = useRef<
+    Array<{ cardId: number; correct: boolean; attempts: number }>
+  >([]);
+  const isQueueRunningRef = useRef(false);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+  const [failedSync, setFailedSync] = useState<
+    Array<{ cardId: number; correct: boolean }>
+  >([]);
   const [showMenu, setShowMenu] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CardItem | null>(null);
   const [editTarget, setEditTarget] = useState<CardItem | null>(null);
@@ -150,14 +157,7 @@ export default function StudySessionPage() {
 
   const advanceCard = () => {
     setError("");
-    setCurrentIndex((prev) => {
-      const nextIndex = prev + 1;
-      if (nextIndex >= total) {
-        router.push("/panel/study");
-        return prev;
-      }
-      return nextIndex;
-    });
+    setCurrentIndex((prev) => Math.min(prev + 1, total));
   };
 
   const openEditModal = (card: CardItem) => {
@@ -221,8 +221,6 @@ export default function StudySessionPage() {
   };
 
   const handleReviewUpdate = async (cardId: number, correct: boolean) => {
-    if (isReviewing) return false;
-    setIsReviewing(true);
     try {
       const response = await apiFetch(
         `${getApiBaseUrl()}/api/cards/${cardId}/review/`,
@@ -232,23 +230,65 @@ export default function StudySessionPage() {
           body: JSON.stringify({ correct }),
         },
       );
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data?.detail || "Unable to update card.");
-      }
-      return true;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to update card.");
+      return response.ok;
+    } catch {
       return false;
-    } finally {
-      setIsReviewing(false);
     }
   };
 
-  const handleCardResult = async (correct: boolean) => {
+  const processReviewQueue = useCallback(async () => {
+    if (isQueueRunningRef.current) return;
+    isQueueRunningRef.current = true;
+
+    while (reviewQueueRef.current.length) {
+      const current = reviewQueueRef.current[0];
+      const success = await handleReviewUpdate(current.cardId, current.correct);
+      if (success) {
+        reviewQueueRef.current.shift();
+        setPendingSyncCount(reviewQueueRef.current.length);
+        continue;
+      }
+      current.attempts += 1;
+      if (current.attempts >= 5) {
+        setFailedSync((prev) => [
+          ...prev,
+          { cardId: current.cardId, correct: current.correct },
+        ]);
+        reviewQueueRef.current.shift();
+        setPendingSyncCount(reviewQueueRef.current.length);
+        continue;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+
+    isQueueRunningRef.current = false;
+  }, []);
+
+  const enqueueReviewUpdate = useCallback(
+    (cardId: number, correct: boolean) => {
+      reviewQueueRef.current.push({ cardId, correct, attempts: 0 });
+      setPendingSyncCount(reviewQueueRef.current.length);
+      void processReviewQueue();
+    },
+    [processReviewQueue],
+  );
+
+  const retryFailedSync = () => {
+    if (!failedSync.length) return;
+    const retryItems = failedSync.map((item) => ({
+      cardId: item.cardId,
+      correct: item.correct,
+      attempts: 0,
+    }));
+    setFailedSync([]);
+    reviewQueueRef.current.push(...retryItems);
+    setPendingSyncCount(reviewQueueRef.current.length);
+    void processReviewQueue();
+  };
+
+  const handleCardResult = (correct: boolean) => {
     if (!currentCard) return;
-    const updated = await handleReviewUpdate(currentCard.id, correct);
-    if (!updated) return;
+    enqueueReviewUpdate(currentCard.id, correct);
 
     if (correct) {
       setShowCorrect(true);
@@ -263,6 +303,15 @@ export default function StudySessionPage() {
 
   const bodyCardClass =
     "flex h-full w-full max-w-4xl min-h-0 flex-col items-center justify-between gap-6 rounded-3xl border border-white/10 bg-[#0b1017] p-8 text-center overflow-auto scrollbar-hidden";
+  const allDone = !isLoading && !error && total > 0 && currentIndex >= total;
+  const shouldHoldOnFinish =
+    allDone && (pendingSyncCount > 0 || failedSync.length > 0);
+
+  useEffect(() => {
+    if (allDone && pendingSyncCount === 0 && failedSync.length === 0) {
+      router.push("/panel/study");
+    }
+  }, [allDone, failedSync.length, pendingSyncCount, router]);
 
   return (
     <Container
@@ -407,7 +456,42 @@ export default function StudySessionPage() {
               </div>
             </Container>
           )}
-          {!isLoading && !error && currentCard && (
+          {shouldHoldOnFinish && (
+            <Container
+              id="exam-card-sync"
+              disableGutters
+              maxWidth={false}
+              className={bodyCardClass}
+            >
+              <div className="text-sm uppercase tracking-[0.2em] text-white/60">
+                Finishing sync
+              </div>
+              <div className="text-sm text-white/70">
+                Saving your last answers. You can wait here or retry failed
+                updates.
+              </div>
+              {pendingSyncCount > 0 && (
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
+                  Pending updates: {pendingSyncCount}
+                </div>
+              )}
+              {failedSync.length > 0 && (
+                <div className="rounded-2xl border border-rose-400/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+                  Failed updates: {failedSync.length}
+                </div>
+              )}
+              {failedSync.length > 0 && (
+                <button
+                  type="button"
+                  onClick={retryFailedSync}
+                  className="rounded-full border border-white/20 bg-white/10 px-5 py-3 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white"
+                >
+                  Retry failed updates
+                </button>
+              )}
+            </Container>
+          )}
+          {!shouldHoldOnFinish && !isLoading && !error && currentCard && (
             <Container
               id="exam-card-active"
               disableGutters
@@ -415,48 +499,42 @@ export default function StudySessionPage() {
               className={bodyCardClass}
             >
               {currentCard.config.type === "spelling" ? (
-                <SpellingExam
-                  key={`spelling-${currentCard.id}`}
-                  value={currentCard.config as SpellingConfig}
-                  isBusy={isReviewing}
-                  onResult={handleCardResult}
-                />
+                  <SpellingExam
+                    key={`spelling-${currentCard.id}`}
+                    value={currentCard.config as SpellingConfig}
+                    onResult={handleCardResult}
+                  />
               ) : currentCard.config.type === "multiple-choice" ? (
-                <MultipleChoiceExam
-                  key={`multiple-choice-${currentCard.id}`}
-                  value={currentCard.config as MultipleChoiceConfig}
-                  isBusy={isReviewing}
-                  onResult={handleCardResult}
-                />
+                  <MultipleChoiceExam
+                    key={`multiple-choice-${currentCard.id}`}
+                    value={currentCard.config as MultipleChoiceConfig}
+                    onResult={handleCardResult}
+                  />
               ) : currentCard.config.type === "standard" ? (
-                <StandardExam
-                  key={`standard-${currentCard.id}`}
-                  value={currentCard.config as StandardConfig}
-                  isBusy={isReviewing}
-                  onResult={handleCardResult}
-                />
+                  <StandardExam
+                    key={`standard-${currentCard.id}`}
+                    value={currentCard.config as StandardConfig}
+                    onResult={handleCardResult}
+                  />
               ) : currentCard.config.type === "word-standard" ? (
-                <WordStandardExam
-                  key={`word-standard-${currentCard.id}`}
-                  value={currentCard.config as WordStandardConfig}
-                  isBusy={isReviewing}
-                  onResult={handleCardResult}
-                />
+                  <WordStandardExam
+                    key={`word-standard-${currentCard.id}`}
+                    value={currentCard.config as WordStandardConfig}
+                    onResult={handleCardResult}
+                  />
               ) : currentCard.config.type === "german-verb-conjugator" ? (
-                <GermanVerbConjugatorExam
-                  key={`german-verb-${currentCard.id}`}
-                  value={currentCard.config as GermanVerbConfig}
-                  isBusy={isReviewing}
-                  onResult={handleCardResult}
-                />
+                  <GermanVerbConjugatorExam
+                    key={`german-verb-${currentCard.id}`}
+                    value={currentCard.config as GermanVerbConfig}
+                    onResult={handleCardResult}
+                  />
               ) : currentCard.config.type === "ai-reviewer" ? (
-                <AiReviewerExam
-                  key={`ai-reviewer-${currentCard.id}`}
-                  cardId={currentCard.id}
-                  value={currentCard.config as AiReviewerConfig}
-                  isBusy={isReviewing}
-                  onResult={handleCardResult}
-                />
+                  <AiReviewerExam
+                    key={`ai-reviewer-${currentCard.id}`}
+                    cardId={currentCard.id}
+                    value={currentCard.config as AiReviewerConfig}
+                    onResult={handleCardResult}
+                  />
               ) : (
                 <div className="space-y-3">
                   <div className="text-sm text-white/70">
