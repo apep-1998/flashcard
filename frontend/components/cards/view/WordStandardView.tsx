@@ -1,4 +1,5 @@
 import type { WordStandardConfig } from "@/lib/schemas/cards";
+import MarkdownText from "@/components/common/MarkdownText";
 import AudioButton from "./AudioButton";
 
 type Props = {
@@ -19,7 +20,12 @@ export default function WordStandardView({ value }: Props) {
           ? `${value.text_to_speech} (${value.text_to_speech_language || "en"})`
           : "—"}
       </div>
-      <div>Back: {value.back || "—"}</div>
+      <div className="space-y-1">
+        <div className="text-xs uppercase tracking-[0.2em] text-white/50">
+          Back
+        </div>
+        <MarkdownText content={value.back} />
+      </div>
     </div>
   );
 }

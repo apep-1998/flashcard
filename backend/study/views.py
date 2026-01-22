@@ -5,7 +5,7 @@ from uuid import uuid4
 from django.urls import reverse_lazy
 from django.utils import timezone
 from google import genai
-from rest_framework import permissions, viewsets
+from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -258,6 +258,79 @@ class CardViewSet(viewsets.ModelViewSet):
             serializer.save(config=config)
         else:
             serializer.save()
+
+    @action(detail=False, methods=["post"], url_path="bulk-create")
+    def bulk_create(self, request):
+        box_id = request.data.get("box_id")
+        cards = request.data.get("cards", [])
+        group_id = request.data.get("group_id", "")
+
+        if not box_id:
+            raise ValidationError({"box_id": "Box id is required."})
+        if not isinstance(cards, list) or not cards:
+            raise ValidationError({"cards": "A non-empty list of cards is required."})
+
+        try:
+            box = Box.objects.get(id=box_id, user=request.user)
+        except Box.DoesNotExist:
+            raise ValidationError({"box_id": "Box does not belong to the user."})
+
+        errors = []
+        new_cards = []
+        for index, payload in enumerate(cards):
+            if not isinstance(payload, dict):
+                errors.append({"index": index, "error": "Card must be an object."})
+                continue
+
+            config = payload.get("config")
+            if config is None:
+                config = dict(payload)
+                payload_group = config.pop("group_id", "")
+            else:
+                payload_group = payload.get("group_id", "")
+
+            resolved_group = payload_group or group_id or ""
+
+            if not isinstance(config, dict):
+                errors.append({"index": index, "error": "Config must be an object."})
+                continue
+            if not config.get("type"):
+                errors.append({"index": index, "error": "Card type is required."})
+                continue
+
+            config = self._apply_tts(config)
+            new_cards.append(
+                Card(
+                    user=request.user,
+                    box=box,
+                    finished=False,
+                    level=0,
+                    group_id=resolved_group,
+                    next_review_time=None,
+                    config=config,
+                )
+            )
+
+        if errors:
+            return Response({"errors": errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        created_cards = Card.objects.bulk_create(new_cards)
+        CardActivity.objects.bulk_create(
+            [
+                CardActivity(
+                    user=request.user,
+                    card=card,
+                    action=CardActivity.Action.CREATE,
+                    card_level=card.level,
+                )
+                for card in created_cards
+            ]
+        )
+
+        return Response(
+            {"created": len(created_cards), "ids": [card.id for card in created_cards]},
+            status=status.HTTP_201_CREATED,
+        )
 
     @action(detail=True, methods=["post"])
     def review(self, request, pk=None):

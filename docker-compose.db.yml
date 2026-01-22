@@ -1,0 +1,11 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: learning_fast_postgres_dev
+    restart: unless-stopped
+    env_file:
+      - backend/.env
+    ports:
+      - "5432:5432"
+    volumes:
+      - /opt/database:/var/lib/postgresql/data

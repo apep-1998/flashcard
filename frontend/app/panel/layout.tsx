@@ -110,12 +110,12 @@ export default function PanelLayout({
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen overflow-hidden bg-[#0f141b] text-white">
-      <div className="mx-auto w-full max-w-6xl px-6 pb-28 pt-12">
-        <main className="space-y-8">{children}</main>
+    <div className="min-h-screen min-w-screen overflow-hidden bg-[#0f141b] text-white">
+      <div className="flex justify-center min-h-screen min-w-screen ">
+        <main className="flex justify-center min-w-screen">{children}</main>
       </div>
 
-      <nav className="fixed bottom-4 left-1/2 z-40 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 rounded-3xl border border-white/10 bg-white/10 px-3 py-2 backdrop-blur-xl">
+      <nav className="fixed h-20 bottom-4 left-1/2 z-40 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 rounded-3xl border border-white/10 bg-white/10 px-3 py-2 backdrop-blur-xl">
         <div className="grid grid-cols-5 gap-2 text-[11px]">
           {PANEL_SECTIONS.map((section) => {
             const isActive = pathname === section.href;

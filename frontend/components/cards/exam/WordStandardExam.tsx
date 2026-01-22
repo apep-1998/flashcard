@@ -1,26 +1,26 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AudioButton from "@/components/cards/view/AudioButton";
+import MarkdownText from "@/components/common/MarkdownText";
 import type { WordStandardConfig } from "@/lib/schemas/cards";
 
 type Props = {
   value: WordStandardConfig;
   isBusy?: boolean;
-  onAnswer: (isCorrect: boolean) => void;
+  onResult: (isCorrect: boolean) => void;
 };
 
-export default function WordStandardExam({ value, isBusy, onAnswer }: Props) {
+export default function WordStandardExam({ value, isBusy, onResult }: Props) {
   const [isFlipped, setIsFlipped] = useState(false);
+
+  useEffect(() => {
+    setIsFlipped(false);
+  }, [value.word, value.back]);
 
   return (
     <div className="relative flex h-full flex-col justify-between rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
       <div className="text-xs uppercase tracking-[0.2em] text-white/60">
         Define the word
       </div>
-      {value.voice_file_url && !isFlipped && (
-        <div className="absolute right-4 top-4">
-          <AudioButton src={value.voice_file_url} autoPlay />
-        </div>
-      )}
       <div className="mt-5 space-y-4">
         <div>
           <div className="text-lg font-semibold text-white">
@@ -29,6 +29,11 @@ export default function WordStandardExam({ value, isBusy, onAnswer }: Props) {
           <div className="text-sm text-white/60">
             {value.part_of_speech || ""}
           </div>
+          {value.voice_file_url && (
+            <div className="mt-4 flex justify-center">
+              <AudioButton src={value.voice_file_url} autoPlay />
+            </div>
+          )}
         </div>
         {isFlipped && (
           <div>
@@ -36,41 +41,41 @@ export default function WordStandardExam({ value, isBusy, onAnswer }: Props) {
               Back
             </div>
             <div className="mt-2 text-lg font-semibold text-white">
-              {value.back || "—"}
+              <MarkdownText content={value.back} />
             </div>
           </div>
         )}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-4 flex w-full items-center justify-center">
         {!isFlipped ? (
           <button
             type="button"
             disabled={isBusy}
             onClick={() => setIsFlipped(true)}
-            className="rounded-full border border-white/20 bg-white/10 px-5 py-3 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-full border border-white/20 bg-white/10 px-6 py-3 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             Flip card
           </button>
         ) : (
-          <>
+          <div className="flex w-full items-center justify-between gap-4">
             <button
               type="button"
               disabled={isBusy}
-              onClick={() => onAnswer(true)}
-              className="rounded-full border border-emerald-400/40 bg-emerald-500/20 px-5 py-3 text-xs uppercase tracking-[0.2em] text-emerald-100 transition hover:border-emerald-300 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => onResult(true)}
+              className="flex-1 rounded-full border border-emerald-400/40 bg-emerald-500/20 px-5 py-3 text-xs uppercase tracking-[0.2em] text-emerald-100 transition hover:border-emerald-300 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isBusy ? "Saving..." : "Correct"}
             </button>
             <button
               type="button"
               disabled={isBusy}
-              onClick={() => onAnswer(false)}
-              className="rounded-full border border-rose-400/40 bg-rose-500/20 px-5 py-3 text-xs uppercase tracking-[0.2em] text-rose-100 transition hover:border-rose-300 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => onResult(false)}
+              className="flex-1 rounded-full border border-rose-400/40 bg-rose-500/20 px-5 py-3 text-xs uppercase tracking-[0.2em] text-rose-100 transition hover:border-rose-300 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isBusy ? "Saving..." : "Incorrect"}
             </button>
-          </>
+          </div>
         )}
       </div>
     </div>

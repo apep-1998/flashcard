@@ -1,21 +1,9 @@
 const MOCK_NEWS = [
   {
-    title: "New daily review streaks are live",
+    title: "How learning works here",
     summary:
-      "Track how many days in a row you practiced and aim for a consistent rhythm.",
-    date: "Today",
-  },
-  {
-    title: "Create richer flashcards",
-    summary:
-      "Mix definition, cloze, and image cards in one box for better recall.",
-    date: "2 days ago",
-  },
-  {
-    title: "Learning tips",
-    summary:
-      "Short sessions beat long cramming. Try 10 minutes a day this week.",
-    date: "Last week",
+      "Create boxes, add flashcards, and activate groups to start reviews. Each correct answer promotes the card to the next level with longer intervals; wrong answers reset it for immediate practice. Visit Study to work through ready cards, and use Activity to track progress.",
+    date: "Guide",
   },
 ];
 
@@ -34,7 +22,7 @@ export default function PanelPage() {
         </p>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-2">
+      <section className="grid gap-4">
         {MOCK_NEWS.map((item) => (
           <article
             key={item.title}

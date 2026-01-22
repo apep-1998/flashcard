@@ -1,0 +1,59 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: learning_fast_postgres_dev
+    restart: unless-stopped
+    env_file:
+      - backend/.env
+    environment:
+      POSTGRES_HOST: postgres
+    volumes:
+      - /opt/database:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.dev
+    container_name: learning_fast_backend_dev
+    restart: unless-stopped
+    env_file:
+      - backend/.env
+    environment:
+      POSTGRES_HOST: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app/backend
+      - /opt/media:/app/backend/media
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile.dev
+    container_name: learning_fast_frontend_dev
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      BACKEND_URL: http://backend:8000
+      NEXT_PUBLIC_API_BASE_URL: ""
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules

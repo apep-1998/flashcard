@@ -1,4 +1,5 @@
 import type { StandardConfig } from "@/lib/schemas/cards";
+import MarkdownText from "@/components/common/MarkdownText";
 import AudioButton from "./AudioButton";
 
 type Props = {
@@ -8,8 +9,18 @@ type Props = {
 export default function StandardView({ value }: Props) {
   return (
     <div className="space-y-2 text-sm text-white/70">
-      <div>Front: {value.front || "—"}</div>
-      <div>Back: {value.back || "—"}</div>
+      <div className="space-y-1">
+        <div className="text-xs uppercase tracking-[0.2em] text-white/50">
+          Front
+        </div>
+        <MarkdownText content={value.front} />
+      </div>
+      <div className="space-y-1">
+        <div className="text-xs uppercase tracking-[0.2em] text-white/50">
+          Back
+        </div>
+        <MarkdownText content={value.back} />
+      </div>
       <div>
         Front voice:{" "}
         {value.front_voice_file_url ? (

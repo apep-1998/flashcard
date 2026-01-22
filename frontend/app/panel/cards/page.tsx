@@ -248,52 +248,43 @@ export default function CardsPage() {
       return;
     }
 
-    const now = new Date().toISOString();
-    const fallbackGroupId = groupId.trim() || "default-group";
-    const draftCards = configs.map(({ config, groupId: itemGroupId }, index) => ({
-      boxId: selectedBoxId,
-      userId: "mock-user",
-      finished: false,
-      createdAt: now,
-      updatedAt: now,
-      level: 0,
-      groupId: itemGroupId ?? fallbackGroupId,
-      nextReviewTime: null,
-      config,
-      groupIndex: index,
-    }));
-
-    const schemaErrors = draftCards
-      .map((card, index) => ({ index, parsed: cardSchema.safeParse(card) }))
-      .filter((entry) => !entry.parsed.success);
-
-    if (schemaErrors.length) {
-      setFormError(
-        schemaErrors[0].parsed.success
-          ? "Invalid card data."
-          : schemaErrors[0].parsed.error.issues?.[0]?.message ??
-              `Invalid card at index ${schemaErrors[0].index}.`,
-      );
-      return;
-    }
-
     try {
-      await Promise.all(
-        configs.map(({ config, groupId: itemGroupId }) =>
-          apiFetch(`${getApiBaseUrl()}/api/cards/`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              box_id: selectedBoxId,
-              group_id: itemGroupId ?? fallbackGroupId,
-              finished: false,
-              level: 0,
-              config,
-            }),
+      const fallbackGroupId = groupId.trim();
+      const payloadCards = configs.map(({ config, groupId: itemGroupId }) => ({
+        ...config,
+        ...(itemGroupId ? { group_id: itemGroupId } : {}),
+      }));
+      const response = await apiFetch(
+        `${getApiBaseUrl()}/api/cards/bulk-create/`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            box_id: selectedBoxId,
+            group_id: fallbackGroupId,
+            cards: payloadCards,
           }),
-        ),
+        },
       );
-      setSuccessMessage(`Saved ${configs.length} cards.`);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        if (Array.isArray(data?.errors)) {
+          setBulkErrors(
+            data.errors.map((item: { index: number; error: string }) => {
+              const indexLabel = Number.isFinite(item.index)
+                ? `Item ${item.index}: `
+                : "";
+              return `${indexLabel}${item.error}`;
+            }),
+          );
+          return;
+        }
+        throw new Error(data?.detail || "Unable to save cards.");
+      }
+      const data = (await response.json()) as { created?: number };
+      const createdCount =
+        typeof data?.created === "number" ? data.created : configs.length;
+      setSuccessMessage(`Saved ${createdCount} cards.`);
     } catch (err) {
       setFormError(
         err instanceof Error ? err.message : "Unable to save cards.",

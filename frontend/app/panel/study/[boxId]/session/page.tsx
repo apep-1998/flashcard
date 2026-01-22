@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
+import Container from "@mui/material/Container";
 import SpellingExam from "@/components/cards/exam/SpellingExam";
 import GermanVerbConjugatorExam from "@/components/cards/exam/GermanVerbConjugatorExam";
 import { apiFetch, getApiBaseUrl } from "@/lib/auth";
@@ -39,48 +40,25 @@ type PaginatedCards = {
 };
 
 const parseListParam = (value: string | null) =>
-  value ? value.split(",").map((item) => item.trim()).filter(Boolean) : [];
+  value
+    ? value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
 
 export default function StudySessionPage() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const boxId = Array.isArray(params.boxId)
     ? params.boxId[0]
-    : params.boxId ?? "";
+    : (params.boxId ?? "");
   const boxIdNumber = Number(boxId);
 
   const [cards, setCards] = useState<CardItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [reviewState, setReviewState] = useState<
-    | {
-        type: "spelling";
-        answer: string;
-        expected: string;
-      }
-    | {
-        type: "multiple-choice";
-        answer: string;
-        expected: string;
-        question: string;
-      }
-    | {
-        type: "german-verb-conjugator";
-        answers: Record<string, string>;
-        expected: Record<string, string>;
-      }
-    | {
-        type: "ai-reviewer";
-        score: number;
-        mistakes: Array<{
-          type: string;
-          incorrect: string;
-          correct: string;
-        }>;
-      }
-    | null
-  >(null);
   const [showCorrect, setShowCorrect] = useState(false);
-  const [showIncorrect, setShowIncorrect] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isReviewing, setIsReviewing] = useState(false);
@@ -89,6 +67,7 @@ export default function StudySessionPage() {
   const [editTarget, setEditTarget] = useState<CardItem | null>(null);
   const [editConfig, setEditConfig] = useState<CardConfig | null>(null);
   const [editError, setEditError] = useState("");
+  const [boxName, setBoxName] = useState("");
 
   const levels = useMemo(
     () => parseListParam(searchParams.get("levels")),
@@ -147,13 +126,38 @@ export default function StudySessionPage() {
     setShowMenu(false);
   }, [currentIndex]);
 
+  useEffect(() => {
+    if (!boxIdNumber) return;
+    const loadBox = async () => {
+      try {
+        const response = await apiFetch(
+          `${getApiBaseUrl()}/api/boxes/${boxIdNumber}/`,
+        );
+        if (!response.ok) {
+          throw new Error("Unable to load box.");
+        }
+        const data = (await response.json()) as { name?: string };
+        setBoxName(data?.name ?? "");
+      } catch {
+        setBoxName("");
+      }
+    };
+    loadBox();
+  }, [boxIdNumber]);
+
   const currentCard = cards[currentIndex];
   const total = cards.length;
 
   const advanceCard = () => {
-    setReviewState(null);
     setError("");
-    setCurrentIndex((prev) => Math.min(prev + 1, total));
+    setCurrentIndex((prev) => {
+      const nextIndex = prev + 1;
+      if (nextIndex >= total) {
+        router.push("/panel/study");
+        return prev;
+      }
+      return nextIndex;
+    });
   };
 
   const openEditModal = (card: CardItem) => {
@@ -210,7 +214,9 @@ export default function StudySessionPage() {
       setEditTarget(null);
       setShowMenu(false);
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : "Unable to update card.");
+      setEditError(
+        err instanceof Error ? err.message : "Unable to update card.",
+      );
     }
   };
 
@@ -232,25 +238,19 @@ export default function StudySessionPage() {
       }
       return true;
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to update card.",
-      );
+      setError(err instanceof Error ? err.message : "Unable to update card.");
       return false;
     } finally {
       setIsReviewing(false);
     }
   };
 
-  const handleSpellingSubmit = async (
-    config: SpellingConfig,
-    answer: string,
-    isCorrect: boolean,
-  ) => {
+  const handleCardResult = async (correct: boolean) => {
     if (!currentCard) return;
-    const updated = await handleReviewUpdate(currentCard.id, isCorrect);
+    const updated = await handleReviewUpdate(currentCard.id, correct);
     if (!updated) return;
 
-    if (isCorrect) {
+    if (correct) {
       setShowCorrect(true);
       setTimeout(() => {
         setShowCorrect(false);
@@ -258,162 +258,67 @@ export default function StudySessionPage() {
       }, 650);
       return;
     }
-    setShowIncorrect(true);
-    setTimeout(() => setShowIncorrect(false), 800);
-    setReviewState({
-      type: "spelling",
-      answer,
-      expected: config.spelling,
-    });
-  };
-
-  const handleMultipleChoiceSelect = async (
-    config: MultipleChoiceConfig,
-    answer: string,
-    isCorrect: boolean,
-  ) => {
-    if (!currentCard) return;
-    const updated = await handleReviewUpdate(currentCard.id, isCorrect);
-    if (!updated) return;
-
-    if (isCorrect) {
-      setShowCorrect(true);
-      setTimeout(() => {
-        setShowCorrect(false);
-        advanceCard();
-      }, 650);
-      return;
-    }
-    setShowIncorrect(true);
-    setTimeout(() => setShowIncorrect(false), 800);
-    setReviewState({
-      type: "multiple-choice",
-      answer,
-      expected: config.answer,
-      question: config.question,
-    });
-  };
-
-  const handleStandardAnswer = async (isCorrect: boolean) => {
-    if (!currentCard) return;
-    const updated = await handleReviewUpdate(currentCard.id, isCorrect);
-    if (!updated) return;
-
-    if (isCorrect) {
-      setShowCorrect(true);
-      setTimeout(() => {
-        setShowCorrect(false);
-        advanceCard();
-      }, 650);
-      return;
-    }
-    setShowIncorrect(true);
-    setTimeout(() => setShowIncorrect(false), 800);
     advanceCard();
   };
 
-  const handleGermanVerbSubmit = async (
-    answers: Record<string, string>,
-    isCorrect: boolean,
-    config: GermanVerbConfig,
-  ) => {
-    if (!currentCard) return;
-    const updated = await handleReviewUpdate(currentCard.id, isCorrect);
-    if (!updated) return;
-
-    if (isCorrect) {
-      setShowCorrect(true);
-      setTimeout(() => {
-        setShowCorrect(false);
-        advanceCard();
-      }, 650);
-      return;
-    }
-    setShowIncorrect(true);
-    setTimeout(() => setShowIncorrect(false), 800);
-    setReviewState({
-      type: "german-verb-conjugator",
-      answers,
-      expected: {
-        ich: config.ich,
-        du: config.du,
-        "er/sie/es": config["er/sie/es"],
-        wir: config.wir,
-        ihr: config.ihr,
-        sie: config.sie,
-      },
-    });
-  };
-
-  const handleAiReviewerSubmit = async (
-    _config: AiReviewerConfig,
-    text: string,
-  ) => {
-    if (!currentCard) return;
-    try {
-      const response = await apiFetch(
-        `${getApiBaseUrl()}/api/cards/${currentCard.id}/ai-review/`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ answer: text }),
-        },
-      );
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data?.detail || "Unable to review answer.");
-      }
-      const data = (await response.json()) as {
-        score: number;
-        mistakes: Array<{
-          type: string;
-          incorrect: string;
-          correct: string;
-        }>;
-      };
-      const isCorrect = data.score >= 7;
-      const shouldReview = data.score < 10 || data.mistakes.length > 0;
-      const updated = await handleReviewUpdate(currentCard.id, isCorrect);
-      if (!updated) return;
-
-      if (!shouldReview) {
-        setShowCorrect(true);
-        setTimeout(() => {
-          setShowCorrect(false);
-          advanceCard();
-        }, 650);
-        return;
-      }
-      if (isCorrect) {
-        setShowCorrect(true);
-        setTimeout(() => setShowCorrect(false), 800);
-      } else {
-        setShowIncorrect(true);
-        setTimeout(() => setShowIncorrect(false), 800);
-      }
-      setReviewState({
-        type: "ai-reviewer",
-        score: data.score,
-        mistakes: data.mistakes,
-      });
-    } catch (err) {
-      throw err instanceof Error ? err : new Error("Unable to review answer.");
-    }
-  };
+  const bodyCardClass =
+    "flex h-full w-full max-w-4xl min-h-0 flex-col items-center justify-between gap-6 rounded-3xl border border-white/10 bg-[#0b1017] p-8 text-center overflow-auto scrollbar-hidden";
 
   return (
-    <section className="flex h-[calc(100vh-14rem)] flex-col space-y-6 overflow-hidden">
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-semibold">Study session</h1>
-            <p className="text-sm text-white/60">
+    <Container
+      id="exam-screen"
+      disableGutters
+      maxWidth={false}
+      sx={{
+        display: "flex",
+        width: 1,
+        height: "100svh",
+        paddingBottom: "6rem",
+        boxSizing: "border-box",
+      }}
+    >
+      <Container
+        id="exam-container"
+        disableGutters
+        maxWidth={false}
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "stretch",
+          justifyContent: "flex-start",
+          width: 1,
+          height: 1,
+        }}
+      >
+        <Container
+          id="exam-header"
+          component="header"
+          disableGutters
+          maxWidth={false}
+          sx={{
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 4,
+            width: 1,
+            padding: 2,
+            paddingX: 4,
+            borderBottom: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 24,
+          }}
+        >
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-lg font-semibold">
+              {boxName ? boxName : `Box ${boxIdNumber || ""}`}
+            </h1>
+            <p className="text-xs text-white/70">
               {total ? `${currentIndex + 1} of ${total}` : "No cards loaded"}
             </p>
           </div>
           {currentCard && (
-            <div className="flex items-center gap-3">
-              <span className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-white/60">
+            <div className="flex flex-shrink-0 items-center gap-3">
+              <span className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-white/70">
                 Level {currentCard.level}
               </span>
               <div className="relative">
@@ -452,223 +357,131 @@ export default function StudySessionPage() {
               </div>
             </div>
           )}
-        </div>
-      </div>
-
-      <div className="flex-1 space-y-4 overflow-y-auto scrollbar-hidden">
-        {isLoading && (
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/60">
-            Loading cards...
-          </div>
-        )}
-        {error && (
-          <div className="rounded-3xl border border-red-400/40 bg-red-500/10 p-6 text-sm text-red-100">
-            {error}
-          </div>
-        )}
-        {!isLoading && !currentCard && (
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/60">
-            No cards match this study setup.
-          </div>
-        )}
-
-        {!isLoading && currentCard && reviewState && (
-          <div className="mx-auto flex min-h-[520px] w-full max-w-3xl flex-col items-center gap-6 rounded-3xl border border-white/10 bg-[#0b1017] p-8 text-center">
-            <div className="text-xs uppercase tracking-[0.2em] text-white/60">
-              Review
-            </div>
-            {reviewState.type === "multiple-choice" && (
-              <div className="text-sm text-white/70">
-                Question:{" "}
-                <span className="text-white">{reviewState.question}</span>
-              </div>
-            )}
-            {reviewState.type === "german-verb-conjugator" && (
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-white/70">
-                <div className="text-xs uppercase tracking-[0.2em] text-white/60">
-                  Expected conjugations
-                </div>
-                <div className="mt-2 grid gap-2 md:grid-cols-2">
-                  {Object.entries(reviewState.expected).map(([key, value]) => (
-                    <div key={key} className="flex items-center gap-2">
-                      <span className="text-xs uppercase tracking-[0.2em] text-white/40">
-                        {key}
-                      </span>
-                      <span className="text-white">{value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {reviewState.type === "ai-reviewer" && (
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-white/70">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs uppercase tracking-[0.2em] text-white/60">
-                    Score
-                  </div>
-                  <div className="text-lg font-semibold">
-                    {reviewState.score}/10
-                  </div>
-                </div>
-                <div className="mt-4 space-y-2">
-                  {reviewState.mistakes.length === 0 ? (
-                    <div className="text-sm text-white/60">
-                      No mistakes were detected.
-                    </div>
-                  ) : (
-                    reviewState.mistakes.map((mistake, index) => (
-                      <div
-                        key={`${mistake.type}-${index}`}
-                        className="rounded-2xl border border-white/10 bg-[#0f141b] px-3 py-2"
-                      >
-                        <div className="text-xs uppercase tracking-[0.2em] text-white/50">
-                          {mistake.type}
-                        </div>
-                        <div className="mt-1 text-sm text-white/70">
-                          Incorrect:{" "}
-                          <span className="text-white">
-                            {mistake.incorrect?.toString() || "—"}
-                          </span>
-                        </div>
-                        <div className="mt-1 text-sm text-white/70">
-                          Correct:{" "}
-                          <span className="text-white">
-                            {mistake.correct?.toString() || "—"}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-            <div className="text-sm text-white/70">
-              Your answer:{" "}
-              <span className="text-white">
-                {reviewState.type === "german-verb-conjugator"
-                  ? "See inputs above"
-                  : reviewState.type === "ai-reviewer"
-                  ? "See AI review below"
-                  : reviewState.answer}
-              </span>
-            </div>
-            <div className="text-sm text-white/70">
-              Correct answer:{" "}
-              <span className="text-white">
-                {reviewState.type === "german-verb-conjugator"
-                  ? "See expected values above"
-                  : reviewState.type === "ai-reviewer"
-                  ? "See AI feedback above"
-                  : reviewState.expected}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={advanceCard}
-              className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white"
+        </Container>
+        <Container
+          id="exam-body"
+          disableGutters
+          maxWidth={false}
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "stretch",
+            justifyContent: "space-between",
+            gap: 4,
+            flexGrow: 1,
+            width: 1,
+            minHeight: 0,
+          }}
+        >
+          {isLoading && (
+            <Container
+              id="exam-card-loading"
+              disableGutters
+              maxWidth={false}
+              className={bodyCardClass}
             >
-              Done review
-            </button>
-          </div>
-        )}
-
-        {!isLoading && currentCard && !reviewState && (
-          <div className="mx-auto flex min-h-[520px] w-full max-w-3xl flex-col items-center gap-6 rounded-3xl border border-white/10 bg-[#0b1017] p-8 text-center">
-            <div className="text-xs uppercase tracking-[0.2em] text-white/60">
-              {currentCard.config.type}
-            </div>
-            {currentCard.config.type === "spelling" ? (
-              <SpellingExam
-                value={currentCard.config as SpellingConfig}
-                isBusy={isReviewing}
-                onSubmit={(answer, isCorrect) =>
-                  handleSpellingSubmit(
-                    currentCard.config as SpellingConfig,
-                    answer,
-                    isCorrect,
-                  )
-                }
-              />
-            ) : currentCard.config.type === "multiple-choice" ? (
-              <MultipleChoiceExam
-                value={currentCard.config as MultipleChoiceConfig}
-                isBusy={isReviewing}
-                onSelect={(answer, isCorrect) =>
-                  handleMultipleChoiceSelect(
-                    currentCard.config as MultipleChoiceConfig,
-                    answer,
-                    isCorrect,
-                  )
-                }
-              />
-            ) : currentCard.config.type === "standard" ? (
-              <StandardExam
-                key={`standard-${currentCard.id}`}
-                value={currentCard.config as StandardConfig}
-                isBusy={isReviewing}
-                onAnswer={handleStandardAnswer}
-              />
-            ) : currentCard.config.type === "word-standard" ? (
-              <WordStandardExam
-                key={`word-standard-${currentCard.id}`}
-                value={currentCard.config as WordStandardConfig}
-                isBusy={isReviewing}
-                onAnswer={handleStandardAnswer}
-              />
-            ) : currentCard.config.type === "german-verb-conjugator" ? (
-              <GermanVerbConjugatorExam
-                value={currentCard.config as GermanVerbConfig}
-                isBusy={isReviewing}
-                onSubmit={(answers, isCorrect) =>
-                  handleGermanVerbSubmit(
-                    answers,
-                    isCorrect,
-                    currentCard.config as GermanVerbConfig,
-                  )
-                }
-              />
-            ) : currentCard.config.type === "ai-reviewer" ? (
-              <AiReviewerExam
-                value={currentCard.config as AiReviewerConfig}
-                onSubmit={(answer) =>
-                  handleAiReviewerSubmit(
-                    currentCard.config as AiReviewerConfig,
-                    answer,
-                  )
-                }
-              />
-            ) : (
-              <div className="space-y-3">
-                <div className="text-sm text-white/70">
-                  Exam mode for this card type isn’t ready yet.
-                </div>
-                <button
-                  type="button"
-                  onClick={advanceCard}
-                  className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white"
-                >
-                  Skip card
-                </button>
+              <div className="text-sm text-white/70">Loading cards...</div>
+            </Container>
+          )}
+          {error && (
+            <Container
+              id="exam-card-error"
+              disableGutters
+              maxWidth={false}
+              className={bodyCardClass}
+            >
+              <div className="rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                {error}
               </div>
-            )}
+            </Container>
+          )}
+          {!isLoading && !currentCard && !error && (
+            <Container
+              id="exam-card-empty"
+              disableGutters
+              maxWidth={false}
+              className={bodyCardClass}
+            >
+              <div className="text-sm text-white/70">
+                No cards match this study setup.
+              </div>
+            </Container>
+          )}
+          {!isLoading && !error && currentCard && (
+            <Container
+              id="exam-card-active"
+              disableGutters
+              maxWidth={false}
+              className={bodyCardClass}
+            >
+              {currentCard.config.type === "spelling" ? (
+                <SpellingExam
+                  key={`spelling-${currentCard.id}`}
+                  value={currentCard.config as SpellingConfig}
+                  isBusy={isReviewing}
+                  onResult={handleCardResult}
+                />
+              ) : currentCard.config.type === "multiple-choice" ? (
+                <MultipleChoiceExam
+                  key={`multiple-choice-${currentCard.id}`}
+                  value={currentCard.config as MultipleChoiceConfig}
+                  isBusy={isReviewing}
+                  onResult={handleCardResult}
+                />
+              ) : currentCard.config.type === "standard" ? (
+                <StandardExam
+                  key={`standard-${currentCard.id}`}
+                  value={currentCard.config as StandardConfig}
+                  isBusy={isReviewing}
+                  onResult={handleCardResult}
+                />
+              ) : currentCard.config.type === "word-standard" ? (
+                <WordStandardExam
+                  key={`word-standard-${currentCard.id}`}
+                  value={currentCard.config as WordStandardConfig}
+                  isBusy={isReviewing}
+                  onResult={handleCardResult}
+                />
+              ) : currentCard.config.type === "german-verb-conjugator" ? (
+                <GermanVerbConjugatorExam
+                  key={`german-verb-${currentCard.id}`}
+                  value={currentCard.config as GermanVerbConfig}
+                  isBusy={isReviewing}
+                  onResult={handleCardResult}
+                />
+              ) : currentCard.config.type === "ai-reviewer" ? (
+                <AiReviewerExam
+                  key={`ai-reviewer-${currentCard.id}`}
+                  cardId={currentCard.id}
+                  value={currentCard.config as AiReviewerConfig}
+                  isBusy={isReviewing}
+                  onResult={handleCardResult}
+                />
+              ) : (
+                <div className="space-y-3">
+                  <div className="text-sm text-white/70">
+                    Exam mode for this card type isn’t ready yet.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCardResult(false)}
+                    className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white"
+                  >
+                    Skip card
+                  </button>
+                </div>
+              )}
+            </Container>
+          )}
+        </Container>
+      </Container>
+      {showCorrect && (
+        <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center">
+          <div className="animate-pulse rounded-full border border-emerald-300/40 bg-emerald-500/20 px-8 py-4 text-sm uppercase tracking-[0.3em] text-emerald-100 shadow-xl shadow-emerald-500/20">
+            Correct
           </div>
-        )}
-        {showCorrect && (
-          <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center">
-            <div className="animate-pulse rounded-full border border-emerald-300/40 bg-emerald-500/20 px-8 py-4 text-sm uppercase tracking-[0.3em] text-emerald-100 shadow-xl shadow-emerald-500/20">
-              Correct
-            </div>
-          </div>
-        )}
-        {showIncorrect && (
-          <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center">
-            <div className="animate-pulse rounded-full border border-rose-300/40 bg-rose-500/20 px-8 py-4 text-sm uppercase tracking-[0.3em] text-rose-100 shadow-xl shadow-rose-500/20">
-              Incorrect
-            </div>
-          </div>
-        )}
-      </div>
-
+        </div>
+      )}
       {deleteTarget && (
         <div className="fixed inset-0 z-40 flex items-center justify-center px-6 py-12">
           <button
@@ -701,7 +514,6 @@ export default function StudySessionPage() {
           </div>
         </div>
       )}
-
       {editTarget && (
         <div className="fixed inset-0 z-40 flex items-center justify-center px-6 py-12">
           <button
@@ -748,6 +560,6 @@ export default function StudySessionPage() {
           </div>
         </div>
       )}
-    </section>
+    </Container>
   );
 }

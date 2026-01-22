@@ -26,39 +26,39 @@ export default function CardExamFactory({ type, value }: Props) {
       return (
         <SpellingExam
           value={value as SpellingConfig}
-          onSubmit={() => {}}
+          onResult={() => {}}
         />
       );
     case "multiple-choice":
       return (
         <MultipleChoiceExam
           value={value as MultipleChoiceConfig}
-          onSelect={() => {}}
+          onResult={() => {}}
         />
       );
     case "ai-reviewer":
       return (
         <AiReviewerExam
           value={value as AiReviewerConfig}
-          onSubmit={async () => {}}
+          onResult={() => {}}
         />
       );
     case "standard":
       return (
-        <StandardExam value={value as StandardConfig} onAnswer={() => {}} />
+        <StandardExam value={value as StandardConfig} onResult={() => {}} />
       );
     case "word-standard":
       return (
         <WordStandardExam
           value={value as WordStandardConfig}
-          onAnswer={() => {}}
+          onResult={() => {}}
         />
       );
     case "german-verb-conjugator":
       return (
         <GermanVerbConjugatorExam
           value={value as GermanVerbConfig}
-          onSubmit={() => {}}
+          onResult={() => {}}
         />
       );
     default:
