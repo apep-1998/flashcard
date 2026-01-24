@@ -23,7 +23,11 @@ export default function SpellingExam({ value, isBusy, onResult }: Props) {
     event.preventDefault();
     if (isBusy) return;
     const cleaned = normalize(answer);
-    if (!cleaned) return;
+    if (!cleaned) {
+      setReview({ answer: "" });
+      setAnswer("");
+      return;
+    }
     const isCorrect = cleaned === expected;
     if (isCorrect) {
       onResult(true);
@@ -52,7 +56,7 @@ export default function SpellingExam({ value, isBusy, onResult }: Props) {
           </div>
           <div className="mt-6 space-y-3 text-left">
             <div className="rounded-2xl border border-rose-400/40 bg-rose-500/15 px-4 py-3 text-base font-semibold text-rose-100">
-              Your answer: {review.answer}
+              Your answer: {review.answer ? review.answer : "—"}
             </div>
             <div className="rounded-2xl border border-emerald-400/40 bg-emerald-500/15 px-4 py-3 text-base font-semibold text-emerald-100">
               Correct: {value.spelling}

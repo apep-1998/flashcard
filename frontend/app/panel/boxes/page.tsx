@@ -37,7 +37,7 @@ export default function BoxesPage() {
   const [deleteTarget, setDeleteTarget] = useState<BoxItem | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [activateTarget, setActivateTarget] = useState<BoxItem | null>(null);
-  const [activateCount, setActivateCount] = useState(10);
+  const [activateCount, setActivateCount] = useState("10");
   const [menuTargetId, setMenuTargetId] = useState<number | null>(null);
   const [deleteCardsTarget, setDeleteCardsTarget] = useState<BoxItem | null>(
     null,
@@ -191,13 +191,18 @@ export default function BoxesPage() {
   };
 
   const handleActivate = async (boxId: number) => {
+    const parsedCount = Number.parseInt(activateCount, 10);
+    if (!Number.isFinite(parsedCount) || parsedCount <= 0) {
+      setError("Enter a valid number of groups to activate.");
+      return;
+    }
     try {
       const response = await apiFetch(
         `${getApiBaseUrl()}/api/boxes/${boxId}/activate-cards/`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ count: activateCount }),
+          body: JSON.stringify({ count: parsedCount }),
         },
       );
       if (!response.ok) {
@@ -455,7 +460,7 @@ export default function BoxesPage() {
                       </div>
                     </div>
 
-                    <div className="mt-4 grid gap-3 text-sm text-white/70 sm:grid-cols-4">
+                    <div className="mt-4 grid gap-3 text-sm text-white/70 sm:grid-cols-5">
                       <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
                         Total cards{" "}
                         <span className="ml-2 text-white">
@@ -466,6 +471,15 @@ export default function BoxesPage() {
                         Active{" "}
                         <span className="ml-2 text-white">
                           {box.active_cards}
+                        </span>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+                        Active %{" "}
+                        <span className="ml-2 text-white">
+                          {box.total_cards
+                            ? ((box.active_cards / box.total_cards) * 100).toFixed(2)
+                            : "0.00"}
+                          %
                         </span>
                       </div>
                       <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
@@ -646,9 +660,7 @@ export default function BoxesPage() {
                 type="number"
                 min={1}
                 value={activateCount}
-                onChange={(event) =>
-                  setActivateCount(Math.max(1, Number(event.target.value)))
-                }
+                onChange={(event) => setActivateCount(event.target.value)}
                 className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
               />
             </label>

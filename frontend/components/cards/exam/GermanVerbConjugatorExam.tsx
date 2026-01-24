@@ -32,7 +32,6 @@ export default function GermanVerbConjugatorExam({
   }, [fields]);
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [formError, setFormError] = useState("");
   const [review, setReview] = useState(false);
 
   const handleChange = (key: string, next: string) => {
@@ -41,11 +40,6 @@ export default function GermanVerbConjugatorExam({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (fields.some((field) => !(answers[field.key] ?? "").trim())) {
-      setFormError("Fill all conjugations before evaluating.");
-      return;
-    }
-    setFormError("");
     const allCorrect = fields.every((field) => {
       const answer = answers[field.key] ?? "";
       return normalize(answer) === normalize(field.expected);
@@ -75,19 +69,35 @@ export default function GermanVerbConjugatorExam({
           <div className="text-xs uppercase tracking-[0.2em] text-white/60">
             Review the conjugations
           </div>
-          <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-white/70">
+          <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4 text-base text-white/70">
             <div className="text-xs uppercase tracking-[0.2em] text-white/60">
               Expected conjugations
             </div>
-            <div className="mt-2 grid gap-2 md:grid-cols-2">
-              {fields.map((field) => (
-                <div key={field.key} className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-[0.2em] text-white/40">
-                    {field.label}
-                  </span>
-                  <span className="text-white">{field.expected}</span>
-                </div>
-              ))}
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              {fields.map((field) => {
+                const answer = answers[field.key] ?? "";
+                const isCorrect = normalize(answer) === normalize(field.expected);
+                return (
+                  <div
+                    key={field.key}
+                    className={`rounded-2xl border px-4 py-3 ${
+                      isCorrect
+                        ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-100"
+                        : "border-rose-400/40 bg-rose-500/10 text-rose-100"
+                    }`}
+                  >
+                    <div className="text-xs uppercase tracking-[0.2em] opacity-80">
+                      {field.label}
+                    </div>
+                    <div className="mt-2 text-lg font-semibold">
+                      {field.expected}
+                    </div>
+                    <div className="mt-1 text-sm opacity-80">
+                      Your answer: {answer.trim() ? answer : "—"}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
           <button
@@ -112,7 +122,9 @@ export default function GermanVerbConjugatorExam({
               <AudioButton src={value.voice_file_url} autoPlay />
             </div>
           )}
-          <div className="text-sm text-white/60">Fill all six forms.</div>
+          <div className="text-sm text-white/60">
+            Leave blank to review the correct answers.
+          </div>
           <div className="mt-5 grid gap-3 text-left md:grid-cols-2">
             {shuffledFields.map((field) => (
               <label
@@ -141,11 +153,6 @@ export default function GermanVerbConjugatorExam({
           >
             {isBusy ? "Saving..." : "Evaluate"}
           </button>
-          {formError && (
-            <div className="mt-3 rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-2 text-xs text-red-100">
-              {formError}
-            </div>
-          )}
         </>
       )}
     </form>
