@@ -204,6 +204,7 @@ class ExerciseHistory(models.Model):
     question = models.TextField()
     answer = models.TextField()
     review = models.JSONField(default=dict)
+    score = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

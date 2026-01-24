@@ -47,6 +47,9 @@ class CardSerializer(serializers.ModelSerializer):
 
 
 class ExerciseSerializer(serializers.ModelSerializer):
+    history_count = serializers.IntegerField(read_only=True)
+    success_count = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = Exercise
         fields = (
@@ -55,6 +58,8 @@ class ExerciseSerializer(serializers.ModelSerializer):
             "question_making_prompt",
             "evaluate_prompt",
             "exercises",
+            "history_count",
+            "success_count",
             "created_at",
             "updated_at",
         )

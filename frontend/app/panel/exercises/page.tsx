@@ -10,6 +10,8 @@ type ExerciseItem = {
   question_making_prompt: string;
   evaluate_prompt: string;
   exercises: string[];
+  history_count: number;
+  success_count: number;
 };
 
 type ExerciseHistoryItem = {
@@ -363,6 +365,14 @@ export default function ExercisesPage() {
                     <h2 className="text-base font-semibold text-white">
                       {exercise.title}
                     </h2>
+                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-white/50">
+                      <span>
+                        History {exercise.history_count ?? 0}
+                      </span>
+                      <span>
+                        Score ≥7 {exercise.success_count ?? 0}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Link

@@ -2,7 +2,7 @@ from base64 import b64encode
 from datetime import date, timedelta
 from uuid import uuid4
 
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.db.models.functions import TruncDay, TruncMonth, TruncWeek
 from django.urls import reverse_lazy
 from django.utils import timezone
@@ -588,6 +588,12 @@ class ExerciseViewSet(viewsets.ModelViewSet):
         queryset = Exercise.objects.filter(user=self.request.user).order_by(
             "-created_at"
         )
+        queryset = queryset.annotate(
+            history_count=Count("history", distinct=True),
+            success_count=Count(
+                "history", filter=Q(history__score__gte=7), distinct=True
+            ),
+        )
         search = self.request.query_params.get("search")
         if search:
             queryset = queryset.filter(title__icontains=search)
@@ -729,6 +735,7 @@ class ExerciseViewSet(viewsets.ModelViewSet):
             question=question,
             answer=answer,
             review=review_data,
+            score=review_data.get("score", 0),
         )
 
         return Response(review_data)
