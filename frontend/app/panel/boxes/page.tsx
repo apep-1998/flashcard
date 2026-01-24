@@ -402,7 +402,7 @@ export default function BoxesPage() {
                                 onClick={() => {
                                   setMenuTargetId(null);
                                   setActivateTarget(box);
-                                  setActivateCount(10);
+                                  setActivateCount("10");
                                 }}
                                 className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left transition hover:bg-white/10"
                               >
