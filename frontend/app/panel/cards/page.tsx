@@ -32,6 +32,7 @@ type PaginatedBoxes = {
 const DEFAULT_CONFIGS: Record<CardType, CardConfig> = {
   spelling: {
     type: "spelling",
+    front: "",
     voice_file_url: "",
     text_to_speech: "",
     text_to_speech_language: "en",

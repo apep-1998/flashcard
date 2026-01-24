@@ -17,6 +17,11 @@ feedbacks are the mistakes that user did. and for each mistake you should give t
 if user get 10 score we don't need to give feedback.
 """
 
+prompt_exercise_questions = """
+You are an expert exercise writer. Using the provided prompt, generate a fresh
+set of concise practice exercises. Return JSON only.
+"""
+
 
 class Mistake(BaseModel):
     type: str = Field(description="Type of mistake")
@@ -27,3 +32,13 @@ class Mistake(BaseModel):
 class Review(BaseModel):
     score: int = Field(description="The score of the user out of 10")
     mistakes: List[Mistake]
+
+
+class ExerciseItems(BaseModel):
+    exercises: List[str] = Field(description="List of generated exercises")
+
+
+class ExerciseReview(BaseModel):
+    score: int = Field(description="The score of the user out of 10")
+    mistakes: List[Mistake]
+    feedbacks: List[str] = Field(description="Short feedback tips")

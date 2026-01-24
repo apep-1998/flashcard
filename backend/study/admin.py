@@ -1,5 +1,13 @@
 from django.contrib import admin
-from .models import Box, Card, CardActivity, AiReviewLog
+from .models import (
+    Box,
+    Card,
+    CardActivity,
+    CardAuditLog,
+    AiReviewLog,
+    Exercise,
+    ExerciseHistory,
+)
 
 
 @admin.register(Box)
@@ -30,8 +38,29 @@ class CardActivityAdmin(admin.ModelAdmin):
     list_filter = ("action", "created_at")
 
 
+@admin.register(CardAuditLog)
+class CardAuditLogAdmin(admin.ModelAdmin):
+    list_display = ("id", "card", "user", "action", "created_at")
+    search_fields = ("card__id", "user__email", "action")
+    list_filter = ("action", "created_at")
+
+
 @admin.register(AiReviewLog)
 class AiReviewLogAdmin(admin.ModelAdmin):
     list_display = ("id", "card", "user", "card_level", "created_at")
     search_fields = ("card__id", "user__email")
+    list_filter = ("created_at",)
+
+
+@admin.register(Exercise)
+class ExerciseAdmin(admin.ModelAdmin):
+    list_display = ("id", "title", "user", "created_at")
+    search_fields = ("title", "user__email")
+    list_filter = ("created_at",)
+
+
+@admin.register(ExerciseHistory)
+class ExerciseHistoryAdmin(admin.ModelAdmin):
+    list_display = ("id", "exercise", "user", "created_at")
+    search_fields = ("exercise__title", "user__email")
     list_filter = ("created_at",)

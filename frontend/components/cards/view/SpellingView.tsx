@@ -8,6 +8,7 @@ type Props = {
 export default function SpellingView({ value }: Props) {
   return (
     <div className="space-y-2 text-sm text-white/70">
+      <div>Front: {value.front || "—"}</div>
       <div>
         Voice: {value.voice_file_url ? <AudioButton src={value.voice_file_url} /> : "—"}
       </div>

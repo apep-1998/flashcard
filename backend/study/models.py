@@ -74,6 +74,7 @@ class Card(models.Model):
 class CardActivity(models.Model):
     class Action(models.TextChoices):
         CREATE = "create", "Create"
+        ACTIVATE = "activate", "Activate"
         ANSWER_CORRECT = "answer_correct", "Answer correct"
         ANSWER_INCORRECT = "answer_incorrect", "Answer incorrect"
 
@@ -89,6 +90,46 @@ class CardActivity(models.Model):
     card_level = models.PositiveIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "created_at"]),
+            models.Index(fields=["card", "created_at"]),
+            models.Index(fields=["action", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.action} (card {self.card_id})"
+
+
+class CardAuditLog(models.Model):
+    class Action(models.TextChoices):
+        CREATE = "create", "Create"
+        UPDATE = "update", "Update"
+        DELETE = "delete", "Delete"
+        REVIEW = "review", "Review"
+        ACTIVATE = "activate", "Activate"
+        BULK_DELETE = "bulk_delete", "Bulk delete"
+        BULK_CREATE = "bulk_create", "Bulk create"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="card_audit_logs",
+    )
+    card = models.ForeignKey(
+        Card,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="audit_logs",
+    )
+    action = models.CharField(max_length=32, choices=Action.choices)
+    before_data = models.JSONField(null=True, blank=True)
+    after_data = models.JSONField(null=True, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-created_at"]
@@ -125,3 +166,52 @@ class AiReviewLog(models.Model):
 
     def __str__(self):
         return f"AI review {self.id} (card {self.card_id})"
+
+
+class Exercise(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="exercises",
+    )
+    title = models.CharField(max_length=200)
+    question_making_prompt = models.TextField()
+    evaluate_prompt = models.TextField()
+    exercises = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "created_at"]),
+            models.Index(fields=["user", "title"]),
+        ]
+
+    def __str__(self):
+        return f"{self.title} ({self.user_id})"
+
+
+class ExerciseHistory(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="exercise_histories",
+    )
+    exercise = models.ForeignKey(
+        Exercise, on_delete=models.CASCADE, related_name="history"
+    )
+    question = models.TextField()
+    answer = models.TextField()
+    review = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "created_at"]),
+            models.Index(fields=["exercise", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"Exercise history {self.id} ({self.exercise_id})"

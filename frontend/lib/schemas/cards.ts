@@ -26,6 +26,7 @@ const ttsFields = {
 export const spellingConfigSchema = z
   .object({
     type: z.literal("spelling"),
+    front: optionalText,
     voice_file_url: optionalUrl,
     ...ttsFields,
     spelling: z.string().min(1, "Spelling is required."),

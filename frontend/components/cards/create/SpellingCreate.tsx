@@ -9,6 +9,17 @@ type Props = {
 export default function SpellingCreate({ value, onChange }: Props) {
   return (
     <div className="space-y-4">
+      <label className="block text-sm text-white/70">
+        Front (optional)
+        <input
+          value={value.front ?? ""}
+          onChange={(event) =>
+            onChange({ ...value, front: event.target.value })
+          }
+          className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
+          placeholder="A hint or prompt..."
+        />
+      </label>
       <VoiceInput
         label="Voice file"
         value={value.voice_file_url ?? ""}

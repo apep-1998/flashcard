@@ -72,6 +72,11 @@ export default function SpellingExam({ value, isBusy, onResult }: Props) {
           <div className="text-xs uppercase tracking-[0.2em] text-white/60">
             Listen and spell
           </div>
+          {value.front ? (
+            <div className="mt-4 text-lg font-semibold text-white">
+              {value.front}
+            </div>
+          ) : null}
           {value.voice_file_url ? (
             <div className="mt-4 flex justify-center">
               <AudioButton src={value.voice_file_url} autoPlay />

@@ -35,12 +35,14 @@ export default function BoxesPage() {
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [editingBox, setEditingBox] = useState<BoxItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BoxItem | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
   const [activateTarget, setActivateTarget] = useState<BoxItem | null>(null);
   const [activateCount, setActivateCount] = useState(10);
   const [menuTargetId, setMenuTargetId] = useState<number | null>(null);
   const [deleteCardsTarget, setDeleteCardsTarget] = useState<BoxItem | null>(
     null,
   );
+  const [deleteCardsConfirm, setDeleteCardsConfirm] = useState("");
   const [shareTarget, setShareTarget] = useState<BoxItem | null>(null);
   const [shareCode, setShareCode] = useState("");
   const [cloneCode, setCloneCode] = useState("");
@@ -390,14 +392,6 @@ export default function BoxesPage() {
                                 <span aria-hidden="true">📄</span>
                                 View cards
                               </Link>
-                              <Link
-                                href={`/panel/boxes/${box.id}/activity`}
-                                onClick={() => setMenuTargetId(null)}
-                                className="flex items-center gap-2 rounded-xl px-3 py-2 transition hover:bg-white/10"
-                              >
-                                <span aria-hidden="true">📊</span>
-                                Activity insights
-                              </Link>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -583,7 +577,10 @@ export default function BoxesPage() {
           <button
             type="button"
             aria-label="Close delete dialog"
-            onClick={() => setDeleteTarget(null)}
+            onClick={() => {
+              setDeleteTarget(null);
+              setDeleteConfirm("");
+            }}
             className="fixed inset-0 bg-black/60"
           />
           <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-[#0f141b] p-6 shadow-2xl shadow-black/40">
@@ -591,11 +588,24 @@ export default function BoxesPage() {
             <p className="mt-2 text-sm text-white/70">
               Delete \"{deleteTarget.name}\"? This cannot be undone.
             </p>
+            <label className="mt-6 block text-sm text-white/70">
+              Type <span className="font-semibold text-white">confirm</span> to
+              continue
+              <input
+                value={deleteConfirm}
+                onChange={(event) => setDeleteConfirm(event.target.value)}
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
+                placeholder="confirm"
+              />
+            </label>
 
             <div className="mt-6 flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={() => setDeleteTarget(null)}
+                onClick={() => {
+                  setDeleteTarget(null);
+                  setDeleteConfirm("");
+                }}
                 className="flex-1 rounded-2xl border border-white/20 px-4 py-3 text-sm font-semibold text-white/70 transition hover:text-white"
               >
                 Cancel
@@ -605,8 +615,10 @@ export default function BoxesPage() {
                 onClick={() => {
                   handleDelete(deleteTarget.id);
                   setDeleteTarget(null);
+                  setDeleteConfirm("");
                 }}
-                className="flex-1 rounded-2xl bg-red-500/80 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-500"
+                disabled={deleteConfirm.trim().toLowerCase() !== "confirm"}
+                className="flex-1 rounded-2xl bg-red-500/80 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Delete
               </button>
@@ -666,7 +678,10 @@ export default function BoxesPage() {
           <button
             type="button"
             aria-label="Close delete cards dialog"
-            onClick={() => setDeleteCardsTarget(null)}
+            onClick={() => {
+              setDeleteCardsTarget(null);
+              setDeleteCardsConfirm("");
+            }}
             className="fixed inset-0 bg-black/60"
           />
           <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-[#0f141b] p-6 shadow-2xl shadow-black/40">
@@ -675,10 +690,23 @@ export default function BoxesPage() {
               Delete every card in "{deleteCardsTarget.name}"? This cannot be
               undone.
             </p>
+            <label className="mt-6 block text-sm text-white/70">
+              Type <span className="font-semibold text-white">confirm</span> to
+              continue
+              <input
+                value={deleteCardsConfirm}
+                onChange={(event) => setDeleteCardsConfirm(event.target.value)}
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
+                placeholder="confirm"
+              />
+            </label>
             <div className="mt-6 flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={() => setDeleteCardsTarget(null)}
+                onClick={() => {
+                  setDeleteCardsTarget(null);
+                  setDeleteCardsConfirm("");
+                }}
                 className="flex-1 rounded-2xl border border-white/20 px-4 py-3 text-sm font-semibold text-white/70 transition hover:text-white"
               >
                 Cancel
@@ -686,7 +714,8 @@ export default function BoxesPage() {
               <button
                 type="button"
                 onClick={() => handleDeleteCards(deleteCardsTarget.id)}
-                className="flex-1 rounded-2xl bg-red-500/80 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-500"
+                disabled={deleteCardsConfirm.trim().toLowerCase() !== "confirm"}
+                className="flex-1 rounded-2xl bg-red-500/80 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Delete all
               </button>

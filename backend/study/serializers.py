@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Box, Card
+from .models import Box, Card, Exercise, ExerciseHistory
 
 
 class BoxSerializer(serializers.ModelSerializer):
@@ -43,4 +43,30 @@ class CardSerializer(serializers.ModelSerializer):
             "config",
             "created_at",
             "updated_at",
+        )
+
+
+class ExerciseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Exercise
+        fields = (
+            "id",
+            "title",
+            "question_making_prompt",
+            "evaluate_prompt",
+            "exercises",
+            "created_at",
+            "updated_at",
+        )
+
+
+class ExerciseHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExerciseHistory
+        fields = (
+            "id",
+            "question",
+            "answer",
+            "review",
+            "created_at",
         )
