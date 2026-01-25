@@ -29,6 +29,7 @@ type CardItem = {
   level: number;
   group_id: string;
   next_review_time: string | null;
+  is_important: boolean;
   config: CardConfig;
 };
 
@@ -70,6 +71,7 @@ export default function StudySessionPage() {
     Array<{ cardId: number; correct: boolean }>
   >([]);
   const [showMenu, setShowMenu] = useState(false);
+  const [isStarUpdating, setIsStarUpdating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CardItem | null>(null);
   const [editTarget, setEditTarget] = useState<CardItem | null>(null);
   const [editConfig, setEditConfig] = useState<CardConfig | null>(null);
@@ -217,6 +219,45 @@ export default function StudySessionPage() {
       setEditError(
         err instanceof Error ? err.message : "Unable to update card.",
       );
+    }
+  };
+
+  const handleToggleImportant = async () => {
+    if (!currentCard || isStarUpdating) return;
+    const nextValue = !currentCard.is_important;
+    setIsStarUpdating(true);
+    setCards((current) =>
+      current.map((item) =>
+        item.id === currentCard.id ? { ...item, is_important: nextValue } : item,
+      ),
+    );
+    try {
+      const response = await apiFetch(
+        `${getApiBaseUrl()}/api/cards/${currentCard.id}/`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ is_important: nextValue }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error("Unable to update card.");
+      }
+      const updated = (await response.json()) as CardItem;
+      setCards((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+    } catch (err) {
+      setCards((current) =>
+        current.map((item) =>
+          item.id === currentCard.id
+            ? { ...item, is_important: !nextValue }
+            : item,
+        ),
+      );
+      setError(err instanceof Error ? err.message : "Unable to update card.");
+    } finally {
+      setIsStarUpdating(false);
     }
   };
 
@@ -370,6 +411,23 @@ export default function StudySessionPage() {
               <span className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-white/70">
                 Level {currentCard.level}
               </span>
+              <button
+                type="button"
+                onClick={handleToggleImportant}
+                disabled={isStarUpdating}
+                className={`flex h-10 w-10 items-center justify-center rounded-full border transition ${
+                  currentCard.is_important
+                    ? "border-amber-400/60 bg-amber-400/15 text-amber-300"
+                    : "border-white/10 bg-white/5 text-white/50 hover:border-white/40 hover:text-white"
+                } ${isStarUpdating ? "cursor-not-allowed opacity-60" : ""}`}
+                aria-label={
+                  currentCard.is_important ? "Remove star" : "Mark as important"
+                }
+              >
+                <span className="text-lg leading-none">
+                  {currentCard.is_important ? "★" : "☆"}
+                </span>
+              </button>
               <div className="relative">
                 <button
                   type="button"

@@ -29,7 +29,7 @@ class BoxAdmin(admin.ModelAdmin):
 class CardAdmin(admin.ModelAdmin):
     list_display = ("id", "box", "user", "finished", "level", "group_id")
     search_fields = ("box__name", "group_id", "user__email")
-    list_filter = ("finished", "level")
+    list_filter = ("finished", "level", "is_important")
 
 @admin.register(CardActivity)
 class CardActivityAdmin(admin.ModelAdmin):

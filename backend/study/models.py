@@ -57,6 +57,7 @@ class Card(models.Model):
     level = models.PositiveIntegerField(default=0)
     group_id = models.CharField(max_length=120, blank=True)
     next_review_time = models.DateTimeField(null=True, blank=True)
+    is_important = models.BooleanField(default=False)
     config = models.JSONField(default=dict)
 
     class Meta:

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiFetch, getApiBaseUrl } from "@/lib/auth";
 
@@ -32,6 +32,7 @@ export default function ExerciseSessionPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const currentExercise = useMemo(() => {
     if (!exercise?.exercises?.length) return "";
@@ -61,6 +62,12 @@ export default function ExerciseSessionPage() {
     if (!Number.isFinite(exerciseId)) return;
     loadExercise();
   }, [exerciseId]);
+
+  useEffect(() => {
+    if (!review) {
+      inputRef.current?.focus();
+    }
+  }, [currentExercise, review]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -179,8 +186,19 @@ export default function ExerciseSessionPage() {
                 <textarea
                   value={answer}
                   onChange={(event) => setAnswer(event.target.value)}
+                  ref={inputRef}
                   className="mt-2 min-h-[160px] w-full rounded-2xl border border-white/10 bg-[#0f141b] px-4 py-3 text-base text-white outline-none transition focus:border-white/40"
                   placeholder="Write your response..."
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      if (!isSubmitting && answer.trim()) {
+                        handleSubmit(
+                          event as unknown as React.FormEvent<HTMLFormElement>,
+                        );
+                      }
+                    }
+                  }}
                 />
               </label>
               <div className="flex flex-wrap justify-end gap-3">

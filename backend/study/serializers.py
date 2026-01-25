@@ -40,6 +40,7 @@ class CardSerializer(serializers.ModelSerializer):
             "level",
             "group_id",
             "next_review_time",
+            "is_important",
             "config",
             "created_at",
             "updated_at",

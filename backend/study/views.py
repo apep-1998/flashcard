@@ -2,7 +2,7 @@ from base64 import b64encode
 from datetime import date, timedelta
 from uuid import uuid4
 
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Case, When, IntegerField
 from django.db.models.functions import TruncDay, TruncMonth, TruncWeek
 from django.urls import reverse_lazy
 from django.utils import timezone
@@ -293,6 +293,13 @@ class CardViewSet(viewsets.ModelViewSet):
         if group_id:
             queryset = queryset.filter(group_id__icontains=group_id)
 
+        important = params.get("is_important")
+        if important is not None:
+            if str(important).strip().lower() in {"1", "true", "yes"}:
+                queryset = queryset.filter(is_important=True)
+            elif str(important).strip().lower() in {"0", "false", "no"}:
+                queryset = queryset.filter(is_important=False)
+
         ready = params.get("ready")
         if ready == "1":
             queryset = queryset.filter(
@@ -322,7 +329,27 @@ class CardViewSet(viewsets.ModelViewSet):
             raise ValidationError("Box does not belong to the user.")
         config = serializer.validated_data.get("config", {})
         config = self._apply_tts(config)
-        card = serializer.save(user=self.request.user, config=config)
+        group_id = serializer.validated_data.get("group_id", "").strip()
+        now = timezone.now()
+        should_activate = False
+        if group_id:
+            should_activate = (
+                Card.objects.filter(
+                    box=box,
+                    user=self.request.user,
+                    group_id=group_id,
+                    finished=False,
+                )
+                .exclude(level=0)
+                .exists()
+            )
+        card = serializer.save(
+            user=self.request.user,
+            config=config,
+            level=1 if should_activate else 0,
+            next_review_time=now if should_activate else None,
+            finished=False,
+        )
         CardActivity.objects.create(
             user=self.request.user,
             card=card,
@@ -369,6 +396,18 @@ class CardViewSet(viewsets.ModelViewSet):
         except Box.DoesNotExist:
             raise ValidationError({"box_id": "Box does not belong to the user."})
 
+        active_groups = set(
+            Card.objects.filter(
+                box=box,
+                user=request.user,
+                finished=False,
+            )
+            .exclude(level=0)
+            .values_list("group_id", flat=True)
+        )
+        active_groups.discard("")
+
+        now = timezone.now()
         errors = []
         new_cards = []
         for index, payload in enumerate(cards):
@@ -393,14 +432,15 @@ class CardViewSet(viewsets.ModelViewSet):
                 continue
 
             config = self._apply_tts(config)
+            should_activate = bool(resolved_group and resolved_group in active_groups)
             new_cards.append(
                 Card(
                     user=request.user,
                     box=box,
                     finished=False,
-                    level=0,
+                    level=1 if should_activate else 0,
                     group_id=resolved_group,
-                    next_review_time=None,
+                    next_review_time=now if should_activate else None,
                     config=config,
                 )
             )
@@ -888,6 +928,48 @@ class ActivityViewSet(viewsets.ViewSet):
             }
         )
 
+    @action(detail=False, methods=["get"], url_path="challenging")
+    def challenging(self, request):
+        box_id = request.query_params.get("box")
+        queryset = CardActivity.objects.filter(
+            user=request.user,
+            action=CardActivity.Action.ANSWER_INCORRECT,
+        )
+        if box_id:
+            try:
+                queryset = queryset.filter(card__box_id=int(box_id))
+            except (TypeError, ValueError):
+                pass
+
+        challenging = (
+            queryset.values("card_id", "card__config", "card__box_id")
+            .annotate(
+                incorrect_count=Count("id"),
+                correct_count=Count(
+                    Case(
+                        When(
+                            card__activities__action=CardActivity.Action.ANSWER_CORRECT,
+                            then=1,
+                        ),
+                        output_field=IntegerField(),
+                    )
+                ),
+            )
+            .order_by("-incorrect_count", "-correct_count")
+        )
+
+        results = [
+            {
+                "card_id": item["card_id"],
+                "box_id": item["card__box_id"],
+                "incorrect_count": item["incorrect_count"],
+                "config": item["card__config"],
+                "display": _card_display(item["card__config"]),
+            }
+            for item in challenging
+        ]
+        return Response({"results": results})
+
 
 def _card_snapshot(card: Card):
     return {
@@ -899,8 +981,28 @@ def _card_snapshot(card: Card):
         "next_review_time": card.next_review_time.isoformat()
         if card.next_review_time
         else None,
+        "is_important": card.is_important,
         "config": card.config,
     }
+
+
+def _card_display(config: dict):
+    if not isinstance(config, dict):
+        return ""
+    card_type = config.get("type")
+    if card_type == "standard":
+        return config.get("front") or config.get("back") or ""
+    if card_type == "spelling":
+        return config.get("spelling") or config.get("front") or ""
+    if card_type == "word-standard":
+        return config.get("word") or config.get("back") or ""
+    if card_type == "multiple-choice":
+        return config.get("question") or ""
+    if card_type == "ai-reviewer":
+        return config.get("question") or ""
+    if card_type == "german-verb-conjugator":
+        return config.get("verb") or ""
+    return ""
 
 
 # Create your views here.

@@ -397,6 +397,14 @@ export default function BoxesPage() {
                                 <span aria-hidden="true">📄</span>
                                 View cards
                               </Link>
+                              <Link
+                                href={`/panel/boxes/${box.id}/cards?important=1`}
+                                onClick={() => setMenuTargetId(null)}
+                                className="flex items-center gap-2 rounded-xl px-3 py-2 transition hover:bg-white/10"
+                              >
+                                <span aria-hidden="true">⭐</span>
+                                Starred cards
+                              </Link>
                               <button
                                 type="button"
                                 onClick={() => {

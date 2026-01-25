@@ -162,6 +162,7 @@ export const cardSchema = z.object({
   level: z.number().int().min(0),
   groupId: z.string(),
   nextReviewTime: z.string().nullable(),
+  is_important: z.boolean().optional(),
   config: cardConfigSchema,
 });
 

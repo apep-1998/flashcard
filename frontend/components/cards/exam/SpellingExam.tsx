@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import AudioButton from "@/components/cards/view/AudioButton";
 import type { SpellingConfig } from "@/lib/schemas/cards";
 
@@ -13,11 +13,18 @@ const normalize = (input: string) => input.trim().toLowerCase();
 export default function SpellingExam({ value, isBusy, onResult }: Props) {
   const [answer, setAnswer] = useState("");
   const [review, setReview] = useState<null | { answer: string }>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const expected = useMemo(
     () => normalize(value.spelling),
     [value.spelling],
   );
+
+  useEffect(() => {
+    if (!review) {
+      inputRef.current?.focus();
+    }
+  }, [value, review]);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -99,6 +106,7 @@ export default function SpellingExam({ value, isBusy, onResult }: Props) {
               value={answer}
               onChange={(event) => setAnswer(event.target.value)}
               disabled={isBusy}
+              ref={inputRef}
               className="mt-3 w-full rounded-2xl border border-white/10 bg-[#0f141b] px-4 py-3 text-base font-semibold text-white outline-none transition focus:border-white/40"
               placeholder="Type the spelling"
             />

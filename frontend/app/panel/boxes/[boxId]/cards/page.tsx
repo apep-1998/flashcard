@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import CardViewFactory from "@/components/cards/view/CardViewFactory";
 import CardCreateFactory from "@/components/cards/create/CardCreateFactory";
 import { type CardConfig, type CardType } from "@/lib/schemas/cards";
@@ -13,6 +13,7 @@ type CardItem = {
   finished: boolean;
   level: number;
   group_id: string;
+  is_important?: boolean;
   config: CardConfig;
 };
 
@@ -37,6 +38,7 @@ const LEVEL_OPTIONS = ["all", "0", "1", "2", "3", "4", "5"];
 
 export default function BoxCardsPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const boxId = Array.isArray(params.boxId)
     ? params.boxId[0]
     : params.boxId ?? "";
@@ -45,6 +47,7 @@ export default function BoxCardsPage() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [levelFilter, setLevelFilter] = useState("all");
   const [groupSearch, setGroupSearch] = useState("");
+  const [importantFilter, setImportantFilter] = useState<"all" | "only">("all");
   const [cards, setCards] = useState<CardItem[]>([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -63,8 +66,9 @@ export default function BoxCardsPage() {
     if (typeFilter !== "all") params.set("type", typeFilter);
     if (levelFilter !== "all") params.set("level", levelFilter);
     if (groupSearch.trim()) params.set("group_id", groupSearch.trim());
+    if (importantFilter === "only") params.set("is_important", "1");
     return `${getApiBaseUrl()}/api/cards/?${params.toString()}`;
-  }, [boxIdNumber, groupSearch, levelFilter, typeFilter]);
+  }, [boxIdNumber, groupSearch, importantFilter, levelFilter, typeFilter]);
 
   const loadCards = useCallback(
     async (url: string, append: boolean) => {
@@ -104,6 +108,13 @@ export default function BoxCardsPage() {
     },
     [],
   );
+
+  useEffect(() => {
+    const importantParam = searchParams.get("important");
+    if (importantParam === "1") {
+      setImportantFilter("only");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const url = buildCardsUrl();
