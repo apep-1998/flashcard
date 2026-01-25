@@ -2,14 +2,15 @@
 
 import Button from "@mui/material/Button";
 import type { ButtonProps } from "@mui/material/Button";
+import type { SxProps, Theme } from "@mui/material/styles";
 
 type ActionKind = "delete" | "create" | "submit" | "cancel" | "exercise";
 
-type Props = ButtonProps & {
+type Props = Omit<ButtonProps, "action"> & {
   action: ActionKind;
 };
 
-const ACTION_STYLES: Record<ActionKind, ButtonProps["sx"]> = {
+const ACTION_STYLES: Record<ActionKind, SxProps<Theme>> = {
   create: {
     bgcolor: "var(--color-action)",
     color: "#EEEEEE",
@@ -39,16 +40,17 @@ const ACTION_STYLES: Record<ActionKind, ButtonProps["sx"]> = {
 };
 
 export default function ActionButton({ action, sx, ...props }: Props) {
+  const actionSx = ACTION_STYLES[action];
+  const combinedSx: SxProps<Theme> = [
+    { borderRadius: 0.5, textTransform: "none", fontWeight: 700 },
+    ...(Array.isArray(actionSx) ? actionSx : [actionSx]),
+    ...(sx ? (Array.isArray(sx) ? sx : [sx]) : []),
+  ];
+
   return (
     <Button
       {...props}
-      sx={{
-        borderRadius: 0.5,
-        textTransform: "none",
-        fontWeight: 700,
-        ...ACTION_STYLES[action],
-        ...sx,
-      }}
+      sx={combinedSx}
     />
   );
 }
