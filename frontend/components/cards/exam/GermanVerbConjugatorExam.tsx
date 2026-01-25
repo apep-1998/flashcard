@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AudioButton from "@/components/cards/view/AudioButton";
 import type { GermanVerbConfig } from "@/lib/schemas/cards";
 
@@ -27,12 +27,9 @@ export default function GermanVerbConjugatorExam({
     [value],
   );
 
-  const shuffledFields = useMemo(() => {
-    return [...fields].sort(() => Math.random() - 0.5);
-  }, [fields]);
-
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [review, setReview] = useState(false);
+  const ichRef = useRef<HTMLInputElement | null>(null);
 
   const handleChange = (key: string, next: string) => {
     setAnswers((current) => ({ ...current, [key]: next }));
@@ -58,6 +55,12 @@ export default function GermanVerbConjugatorExam({
     setAnswers({});
     onResult(false);
   };
+
+  useEffect(() => {
+    if (!review) {
+      ichRef.current?.focus();
+    }
+  }, [value, review]);
 
   return (
     <form
@@ -126,7 +129,7 @@ export default function GermanVerbConjugatorExam({
             Leave blank to review the correct answers.
           </div>
           <div className="mt-5 grid gap-3 text-left md:grid-cols-2">
-            {shuffledFields.map((field) => (
+            {fields.map((field) => (
               <label
                 key={field.key}
                 className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70"
@@ -140,6 +143,7 @@ export default function GermanVerbConjugatorExam({
                     handleChange(field.key, event.target.value)
                   }
                   disabled={isBusy}
+                  ref={field.key === "ich" ? ichRef : undefined}
                   className="mt-2 w-full rounded-xl border border-white/10 bg-[#0f141b] px-3 py-2 text-base font-semibold text-white outline-none transition focus:border-white/40"
                   placeholder="Type conjugation"
                 />

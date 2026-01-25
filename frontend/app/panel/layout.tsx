@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const PANEL_SECTIONS = [
-  { label: "Home", href: "/panel", icon: "home" },
   { label: "Study", href: "/panel/study", icon: "study" },
   { label: "Boxes", href: "/panel/boxes", icon: "boxes" },
   { label: "Cards", href: "/panel/cards", icon: "cards" },
@@ -154,7 +153,7 @@ export default function PanelLayout({
       </div>
 
       <nav className="fixed h-20 bottom-4 left-1/2 z-40 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 rounded-3xl border border-white/10 bg-white/10 px-3 py-2 backdrop-blur-xl">
-        <div className="grid grid-cols-7 gap-2 text-[11px]">
+        <div className="grid grid-cols-6 gap-2 text-[11px]">
           {PANEL_SECTIONS.map((section) => {
             const isActive = pathname === section.href;
             return (
