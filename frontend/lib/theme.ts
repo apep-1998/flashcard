@@ -20,4 +20,5 @@ export const setTheme = (theme: Theme) => {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(THEME_KEY, theme);
   applyTheme(theme);
+  window.dispatchEvent(new CustomEvent("theme-change", { detail: theme }));
 };

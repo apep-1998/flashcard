@@ -1,25 +1,39 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import ActionButton from "@/components/buttons/ActionButton";
 import CardCreateFactory from "@/components/cards/create/CardCreateFactory";
+import CardViewFactory from "@/components/cards/view/CardViewFactory";
+import TextInput from "@/components/forms/TextInput";
+import CardCreateModal from "@/components/modals/CardCreateModal";
+import DataTable from "@/components/tables/DataTable";
 import { apiFetch, getApiBaseUrl } from "@/lib/auth";
-import {
-  boxSchema,
-  cardConfigSchema,
-  cardSchema,
-  type AiReviewerConfig,
-  type CardConfig,
-  type CardType,
-  type GermanVerbConfig,
-  type MultipleChoiceConfig,
-  type SpellingConfig,
-  type StandardConfig,
-  type WordStandardConfig,
-} from "@/lib/schemas/cards";
+import { type CardConfig, type CardType } from "@/lib/schemas/cards";
+import Breadcrumbs from "@mui/material/Breadcrumbs";
+import Box from "@mui/material/Box";
+import FormControl from "@mui/material/FormControl";
+import IconButton from "@mui/material/IconButton";
+import InputLabel from "@mui/material/InputLabel";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
+import Typography from "@mui/material/Typography";
 
 type BoxItem = {
   id: number;
   name: string;
+};
+
+type CardItem = {
+  id: number;
+  box: number;
+  finished: boolean;
+  level: number;
+  group_id: string;
+  is_important?: boolean;
+  config: CardConfig;
+  created_at?: string;
 };
 
 type PaginatedBoxes = {
@@ -29,425 +43,571 @@ type PaginatedBoxes = {
   results: BoxItem[];
 };
 
-const DEFAULT_CONFIGS: Record<CardType, CardConfig> = {
-  spelling: {
-    type: "spelling",
-    front: "",
-    voice_file_url: "",
-    text_to_speech: "",
-    text_to_speech_language: "en",
-    spelling: "",
-  } satisfies SpellingConfig,
-  "multiple-choice": {
-    type: "multiple-choice",
-    question: "",
-    voice_file_url: "",
-    text_to_speech: "",
-    text_to_speech_language: "en",
-    image_file_url: "",
-    answer: "",
-    options: ["", ""],
-  } satisfies MultipleChoiceConfig,
-  "ai-reviewer": {
-    type: "ai-reviewer",
-    question: "",
-    validate_answer_promt: "",
-  } satisfies AiReviewerConfig,
-  standard: {
-    type: "standard",
-    front: "",
-    back: "",
-    front_voice_file_url: "",
-    back_voice_file_url: "",
-    front_text_to_speech: "",
-    front_text_to_speech_language: "en",
-    back_text_to_speech: "",
-    back_text_to_speech_language: "en",
-  } satisfies StandardConfig,
-  "word-standard": {
-    type: "word-standard",
-    word: "",
-    part_of_speech: "",
-    voice_file_url: "",
-    text_to_speech: "",
-    text_to_speech_language: "en",
-    back: "",
-  } satisfies WordStandardConfig,
-  "german-verb-conjugator": {
-    type: "german-verb-conjugator",
-    verb: "",
-    voice_file_url: "",
-    text_to_speech: "",
-    text_to_speech_language: "en",
-    ich: "",
-    du: "",
-    "er/sie/es": "",
-    wir: "",
-    ihr: "",
-    sie: "",
-  } satisfies GermanVerbConfig,
+type PaginatedCards = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: CardItem[];
 };
 
-const CARD_TYPES = Object.keys(DEFAULT_CONFIGS) as CardType[];
+const CARD_TYPE_OPTIONS: Array<"all" | CardType> = [
+  "all",
+  "standard",
+  "spelling",
+  "word-standard",
+  "german-verb-conjugator",
+  "multiple-choice",
+  "ai-reviewer",
+];
+
+const LEVEL_OPTIONS = ["all", "0", "1", "2", "3", "4", "5", "6", "7"];
+
+const getCardSummary = (config: CardConfig) => {
+  const truncate = (value: string) =>
+    value.length > 80 ? `${value.slice(0, 80)}…` : value;
+  switch (config.type) {
+    case "standard":
+      return truncate(`${config.front} → ${config.back}`);
+    case "spelling":
+      return truncate(config.front || config.spelling);
+    case "word-standard":
+      return truncate(`${config.word} (${config.part_of_speech})`);
+    case "german-verb-conjugator":
+      return truncate(config.verb);
+    case "multiple-choice":
+      return truncate(config.question);
+    case "ai-reviewer":
+      return truncate(config.question);
+    default:
+      return "Card";
+  }
+};
 
 export default function CardsPage() {
   const [boxes, setBoxes] = useState<BoxItem[]>([]);
-  const [selectedBoxId, setSelectedBoxId] = useState<number | null>(null);
-  const [groupId, setGroupId] = useState("");
-  const [cardType, setCardType] = useState<CardType>("spelling");
-  const [config, setConfig] = useState<CardConfig>(DEFAULT_CONFIGS.spelling);
-  const [bulkJson, setBulkJson] = useState("");
-  const [mode, setMode] = useState<"single" | "bulk">("single");
-  const [formError, setFormError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
-  const [bulkErrors, setBulkErrors] = useState<string[]>([]);
+  const [cards, setCards] = useState<CardItem[]>([]);
+  const [boxFilter, setBoxFilter] = useState<"all" | number>("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [levelFilter, setLevelFilter] = useState("all");
+  const [groupSearch, setGroupSearch] = useState("");
+  const [error, setError] = useState("");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const [menuTarget, setMenuTarget] = useState<CardItem | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CardItem | null>(null);
+  const [editTarget, setEditTarget] = useState<CardItem | null>(null);
+  const [editConfig, setEditConfig] = useState<CardConfig | null>(null);
+  const [editError, setEditError] = useState("");
+  const [viewTarget, setViewTarget] = useState<CardItem | null>(null);
 
-  const boxOptions = useMemo(() => boxSchema.array().parse(boxes), [boxes]);
+  const cardCount = totalCount ?? cards.length;
 
-  useEffect(() => {
-    const loadBoxes = async () => {
-      try {
-        const response = await apiFetch(`${getApiBaseUrl()}/api/boxes/`);
-        if (!response.ok) {
-          throw new Error("Unable to load boxes.");
-        }
-        const data = (await response.json()) as PaginatedBoxes | BoxItem[];
-        const results = Array.isArray(data) ? data : data.results;
-        setBoxes(results);
-        if (results.length) {
-          setSelectedBoxId(results[0].id);
-        }
-      } catch (err) {
-        setFormError(
-          err instanceof Error ? err.message : "Unable to load boxes.",
-        );
-      }
-    };
+  const selectSx = {
+    bgcolor: "#0B0D0E",
+    borderRadius: 0.5,
+    color: "#EEEEEE",
+    "& .MuiOutlinedInput-notchedOutline": {
+      borderColor: "var(--panel-border)",
+    },
+    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+      borderColor: "var(--panel-border)",
+    },
+    "& .MuiSvgIcon-root": { color: "#EEEEEE" },
+  } as const;
 
-    loadBoxes();
-  }, []);
+  const boxMap = useMemo(
+    () => new Map(boxes.map((box) => [box.id, box.name])),
+    [boxes],
+  );
 
-  const handleTypeChange = (nextType: CardType) => {
-    setCardType(nextType);
-    setConfig(DEFAULT_CONFIGS[nextType]);
-    setFormError("");
-    setSuccessMessage("");
-    setBulkErrors([]);
+  const handleMenuOpen = useCallback(
+    (event: React.MouseEvent<HTMLElement>, card: CardItem) => {
+      setMenuAnchor(event.currentTarget);
+      setMenuTarget(card);
+    },
+    [],
+  );
+
+  const handleMenuClose = () => {
+    setMenuAnchor(null);
+    setMenuTarget(null);
   };
 
-  const normalizeConfigInput = (input: Record<string, unknown>) => {
-    if ("image_url" in input && !("image_file_url" in input)) {
-      return { ...input, image_file_url: input.image_url };
-    }
-    return input;
+  const openEditModal = (card: CardItem) => {
+    setEditTarget(card);
+    setEditConfig(card.config);
+    setEditError("");
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setFormError("");
-    setSuccessMessage("");
-    setBulkErrors([]);
-
-    if (!selectedBoxId) {
-      setFormError("Select a box before creating a card.");
-      return;
-    }
-
-    const draftCard = {
-      boxId: selectedBoxId,
-      userId: "mock-user",
-      finished: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      level: 0,
-      groupId: groupId.trim() || "default-group",
-      nextReviewTime: null,
-      config,
-    };
-
-    const parsed = cardSchema.safeParse(draftCard);
-    if (!parsed.success) {
-      const issue = parsed.error.issues?.[0];
-      setFormError(issue?.message ?? "Invalid card data.");
+  const handleEditSave = async () => {
+    if (!editTarget) return;
+    setEditError("");
+    if (!editConfig) {
+      setEditError("Card config is required.");
       return;
     }
 
     try {
-      const response = await apiFetch(`${getApiBaseUrl()}/api/cards/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          box_id: selectedBoxId,
-          group_id: groupId.trim(),
-          finished: false,
-          level: 0,
-          config,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data?.detail || "Unable to save card.");
-      }
-
-      setSuccessMessage("Card saved.");
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Unable to save card.");
-    }
-  };
-
-  const handleBulkSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setFormError("");
-    setSuccessMessage("");
-    setBulkErrors([]);
-
-    if (!selectedBoxId) {
-      setFormError("Select a box before adding cards.");
-      return;
-    }
-
-    let parsedJson: unknown;
-    try {
-      parsedJson = JSON.parse(bulkJson);
-    } catch {
-      setFormError("Invalid JSON. Paste a valid JSON array.");
-      return;
-    }
-
-    if (!Array.isArray(parsedJson)) {
-      setFormError("JSON must be an array of card configs.");
-      return;
-    }
-
-    const configs: Array<{ config: CardConfig; groupId?: string }> = [];
-    const errors: string[] = [];
-    for (const [index, item] of parsedJson.entries()) {
-      if (!item || typeof item !== "object") {
-        errors.push(`Item ${index}: must be a card config object.`);
-        continue;
-      }
-      const normalized = normalizeConfigInput(item as Record<string, unknown>);
-      const groupId =
-        typeof normalized.group_id === "string"
-          ? normalized.group_id.trim()
-          : undefined;
-      const { group_id: _groupId, ...configInput } = normalized;
-      const result = cardConfigSchema.safeParse(configInput);
-      if (!result.success) {
-        const issue = result.error.issues?.[0];
-        const message = issue?.message ?? "Invalid card config.";
-        const path = issue?.path?.join(".") ?? "config";
-        errors.push(`Item ${index}: ${path} - ${message}`);
-        continue;
-      }
-      configs.push({ config: result.data, groupId });
-    }
-
-    if (errors.length) {
-      setBulkErrors(errors);
-      return;
-    }
-
-    try {
-      const fallbackGroupId = groupId.trim();
-      const payloadCards = configs.map(({ config, groupId: itemGroupId }) => ({
-        ...config,
-        ...(itemGroupId ? { group_id: itemGroupId } : {}),
-      }));
       const response = await apiFetch(
-        `${getApiBaseUrl()}/api/cards/bulk-create/`,
+        `${getApiBaseUrl()}/api/cards/${editTarget.id}/`,
         {
-          method: "POST",
+          method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            box_id: selectedBoxId,
-            group_id: fallbackGroupId,
-            cards: payloadCards,
+            config: editConfig,
           }),
         },
       );
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        if (Array.isArray(data?.errors)) {
-          setBulkErrors(
-            data.errors.map((item: { index: number; error: string }) => {
-              const indexLabel = Number.isFinite(item.index)
-                ? `Item ${item.index}: `
-                : "";
-              return `${indexLabel}${item.error}`;
-            }),
-          );
-          return;
-        }
-        throw new Error(data?.detail || "Unable to save cards.");
+        throw new Error(data?.detail || "Unable to update card.");
       }
-      const data = (await response.json()) as { created?: number };
-      const createdCount =
-        typeof data?.created === "number" ? data.created : configs.length;
-      setSuccessMessage(`Saved ${createdCount} cards.`);
-    } catch (err) {
-      setFormError(
-        err instanceof Error ? err.message : "Unable to save cards.",
+      const updated = (await response.json()) as CardItem;
+      setCards((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
       );
+      setEditTarget(null);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Unable to update card.");
     }
   };
 
+  const handleDelete = async (card: CardItem) => {
+    try {
+      const response = await apiFetch(
+        `${getApiBaseUrl()}/api/cards/${card.id}/`,
+        { method: "DELETE" },
+      );
+      if (!response.ok) {
+        throw new Error("Unable to delete card.");
+      }
+      setCards((current) => current.filter((item) => item.id !== card.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to delete card.");
+    }
+  };
+
+  const columns = useMemo(
+    () => [
+      { key: "id", label: "ID", minWidth: 80 },
+      {
+        key: "box",
+        label: "Box",
+        minWidth: 140,
+        render: (row: CardItem) => boxMap.get(row.box) ?? `Box ${row.box}`,
+      },
+      {
+        key: "type",
+        label: "Type",
+        minWidth: 150,
+        render: (row: CardItem) => row.config.type,
+      },
+      { key: "level", label: "Level", minWidth: 80 },
+      {
+        key: "group_id",
+        label: "Group ID",
+        minWidth: 140,
+        render: (row: CardItem) => row.group_id || "—",
+      },
+      {
+        key: "summary",
+        label: "Summary",
+        minWidth: 260,
+        render: (row: CardItem) => getCardSummary(row.config),
+      },
+      {
+        key: "actions",
+        label: "Actions",
+        minWidth: 120,
+        render: (row: CardItem) => (
+          <IconButton
+            onClick={(event) => handleMenuOpen(event, row)}
+            aria-label="Card actions"
+            sx={{
+              bgcolor: "transparent",
+              color: "text.primary",
+              "&:hover": { bgcolor: "rgba(50, 56, 62, 0.6)" },
+            }}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+              <circle cx="5" cy="12" r="2" fill="currentColor" />
+              <circle cx="12" cy="12" r="2" fill="currentColor" />
+              <circle cx="19" cy="12" r="2" fill="currentColor" />
+            </svg>
+          </IconButton>
+        ),
+      },
+    ],
+    [boxMap, handleMenuOpen],
+  );
+
+  const buildCardsUrl = useCallback(() => {
+    const params = new URLSearchParams();
+    if (boxFilter !== "all") params.set("box", String(boxFilter));
+    if (typeFilter !== "all") params.set("type", typeFilter);
+    if (levelFilter !== "all") params.set("level", levelFilter);
+    if (groupSearch.trim()) params.set("group_id", groupSearch.trim());
+    params.set("page", String(page + 1));
+    params.set("page_size", String(rowsPerPage));
+    const query = params.toString();
+    return query
+      ? `${getApiBaseUrl()}/api/cards/?${query}`
+      : `${getApiBaseUrl()}/api/cards/`;
+  }, [boxFilter, groupSearch, levelFilter, page, rowsPerPage, typeFilter]);
+
+  const loadCards = useCallback(async (url: string) => {
+    try {
+      setIsLoading(true);
+      const response = await apiFetch(url);
+      if (!response.ok) {
+        throw new Error("Unable to load cards.");
+      }
+      const data = (await response.json()) as PaginatedCards | CardItem[];
+      if (Array.isArray(data)) {
+        setCards(data);
+        setTotalCount(data.length);
+        return;
+      }
+      setCards(data.results);
+      setTotalCount(data.count);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load cards.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const reloadCards = useCallback(() => {
+    const url = buildCardsUrl();
+    setError("");
+    setCards([]);
+    setTotalCount(null);
+    loadCards(url);
+  }, [buildCardsUrl, loadCards]);
+
+  const loadBoxes = useCallback(async () => {
+    try {
+      const response = await apiFetch(`${getApiBaseUrl()}/api/boxes/`);
+      if (!response.ok) {
+        throw new Error("Unable to load boxes.");
+      }
+      const data = (await response.json()) as PaginatedBoxes | BoxItem[];
+      const results = Array.isArray(data) ? data : data.results;
+      setBoxes(results);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load boxes.");
+    }
+  }, []);
+
+  useEffect(() => {
+    loadBoxes();
+  }, [loadBoxes]);
+
+  useEffect(() => {
+    reloadCards();
+  }, [reloadCards]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [boxFilter, typeFilter, levelFilter, groupSearch]);
+
   return (
-    <div className="space-y-6">
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-        <div className="grid gap-4 md:grid-cols-3">
-          <label className="block text-sm text-white/70">
-            Select box
-            <select
-              value={selectedBoxId ?? ""}
-              onChange={(event) => setSelectedBoxId(Number(event.target.value))}
-              className="mt-2 w-full rounded-2xl border border-white/10 bg-[#0f141b] px-4 py-3 text-white outline-none transition focus:border-white/40"
+    <>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 3,
+          height: "100%",
+          minHeight: 0,
+          bgcolor: "var(--color-dark-bg)",
+          overflow: "hidden",
+        }}
+      >
+        <Breadcrumbs sx={{ color: "text.secondary" }}>
+          <Link href="/panel/study">Study</Link>
+          <Typography color="text.primary">Cards</Typography>
+        </Breadcrumbs>
+
+        <Box
+          sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 2,
+          }}
+        >
+          <Box>
+            <Typography variant="h5" fontWeight={700}>
+              Cards
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {cardCount} cards
+            </Typography>
+          </Box>
+          <ActionButton action="create" onClick={() => setIsCreateOpen(true)}>
+            Create cards
+          </ActionButton>
+        </Box>
+
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" },
+            gap: 2,
+          }}
+        >
+          <FormControl fullWidth>
+            <InputLabel sx={{ color: "text.secondary" }}>Box</InputLabel>
+            <Select
+              value={boxFilter}
+              label="Box"
+              onChange={(event) => {
+                const value = event.target.value as string;
+                setBoxFilter(value === "all" ? "all" : Number(value));
+              }}
+              sx={selectSx}
             >
-              {boxOptions.map((box) => (
-                <option key={box.id} value={box.id}>
+              <MenuItem value="all">All boxes</MenuItem>
+              {boxes.map((box) => (
+                <MenuItem key={box.id} value={box.id}>
                   {box.name}
-                </option>
+                </MenuItem>
               ))}
-            </select>
-          </label>
+            </Select>
+          </FormControl>
 
-          <label className="block text-sm text-white/70">
-            Group ID
-            <input
-              value={groupId}
-              onChange={(event) => setGroupId(event.target.value)}
-              className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
-              placeholder="e.g. german-unit-2"
-            />
-          </label>
-
-          <label className="block text-sm text-white/70">
-            Card type
-            <select
-              value={cardType}
-              onChange={(event) =>
-                handleTypeChange(event.target.value as CardType)
-              }
-              className="mt-2 w-full rounded-2xl border border-white/10 bg-[#0f141b] px-4 py-3 text-white outline-none transition focus:border-white/40"
+          <FormControl fullWidth>
+            <InputLabel sx={{ color: "text.secondary" }}>Card type</InputLabel>
+            <Select
+              value={typeFilter}
+              label="Card type"
+              onChange={(event) => setTypeFilter(event.target.value)}
+              sx={selectSx}
             >
-              {CARD_TYPES.map((type) => (
-                <option key={type} value={type}>
+              {CARD_TYPE_OPTIONS.map((type) => (
+                <MenuItem key={type} value={type}>
                   {type}
-                </option>
+                </MenuItem>
               ))}
-            </select>
-          </label>
-        </div>
-      </div>
+            </Select>
+          </FormControl>
 
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h2 className="text-lg font-semibold">Create new card</h2>
-          <div className="flex gap-2 text-xs uppercase tracking-[0.2em] text-white/60">
-            {(["single", "bulk"] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setMode(tab)}
-                className={`rounded-full border px-3 py-1 transition ${
-                  mode === tab
-                    ? "border-white/40 text-white"
-                    : "border-white/10 text-white/60 hover:text-white"
-                }`}
+          <FormControl fullWidth>
+            <InputLabel sx={{ color: "text.secondary" }}>Level</InputLabel>
+            <Select
+              value={levelFilter}
+              label="Level"
+              onChange={(event) => setLevelFilter(event.target.value)}
+              sx={selectSx}
+            >
+              {LEVEL_OPTIONS.map((level) => (
+                <MenuItem key={level} value={level}>
+                  {level}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <TextInput
+            value={groupSearch}
+            onChange={(event) => setGroupSearch(event.target.value)}
+            placeholder="Search group id"
+            sx={{ borderRadius: 0.5 }}
+          />
+        </Box>
+
+        <Box sx={{ flexGrow: 1, minHeight: 0, overflow: "hidden" }}>
+          <DataTable
+            title="Cards"
+            columns={columns}
+            rows={cards}
+            getRowKey={(row) => row.id}
+            loading={isLoading}
+            emptyMessage="No cards match your filters."
+            page={page}
+            rowsPerPage={rowsPerPage}
+            count={totalCount ?? 0}
+            onPageChange={(_, nextPage) => setPage(nextPage)}
+            onRowsPerPageChange={(event) => {
+              setRowsPerPage(Number(event.target.value));
+              setPage(0);
+            }}
+            rowsPerPageOptions={[15, 20, 50]}
+          />
+          {error && (
+            <Box
+              sx={{
+                mt: 2,
+                p: 2,
+                borderRadius: 2,
+                border: "1px solid rgba(248, 113, 113, 0.4)",
+                bgcolor: "rgba(239, 68, 68, 0.12)",
+              }}
+            >
+              <Typography variant="body2" color="error">
+                {error}
+              </Typography>
+            </Box>
+          )}
+        </Box>
+      </Box>
+
+      <CardCreateModal
+        isOpen={isCreateOpen}
+        boxes={boxes}
+        onClose={() => setIsCreateOpen(false)}
+        onCreated={reloadCards}
+      />
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center px-6 py-12">
+          <button
+            type="button"
+            aria-label="Close delete dialog"
+            onClick={() => setDeleteTarget(null)}
+            className="fixed inset-0 bg-black/60"
+          />
+          <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-[var(--color-dark-bg)] p-6 shadow-2xl shadow-black/40">
+            <h2 className="text-lg font-semibold text-white">Delete card</h2>
+            <p className="mt-2 text-sm text-white/70">
+              Delete card #{deleteTarget.id}? This cannot be undone.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-between gap-3">
+              <ActionButton action="cancel" onClick={() => setDeleteTarget(null)}>
+                Cancel
+              </ActionButton>
+              <ActionButton
+                action="delete"
+                onClick={() => handleDelete(deleteTarget)}
               >
-                {tab === "single" ? "Single card" : "JSON import"}
-              </button>
-            ))}
+                Delete
+              </ActionButton>
+            </div>
           </div>
         </div>
+      )}
 
-        {mode === "single" ? (
-          <form onSubmit={handleSubmit} className="mt-6">
-            <p className="text-sm text-white/70">
-              Fill the fields for the selected card type.
+      {editTarget && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center px-6 py-12">
+          <button
+            type="button"
+            aria-label="Close edit dialog"
+            onClick={() => setEditTarget(null)}
+            className="fixed inset-0 bg-black/60"
+          />
+          <div className="relative z-10 w-full max-w-3xl rounded-3xl border border-white/10 bg-[var(--color-dark-bg)] p-6 shadow-2xl shadow-black/40">
+            <h2 className="text-lg font-semibold text-white">Edit card</h2>
+            <p className="mt-2 text-sm text-white/70">
+              Update the card fields. Level and group cannot be changed here.
             </p>
-
-            <div className="mt-6">
-              <CardCreateFactory
-                type={cardType}
-                value={config}
-                onChange={setConfig}
-              />
+            {editConfig && (
+              <div className="mt-6">
+                <CardCreateFactory
+                  type={editConfig.type as CardType}
+                  value={editConfig}
+                  onChange={setEditConfig}
+                />
+              </div>
+            )}
+            {editError && (
+              <div className="mt-4 rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-xs text-red-100">
+                {editError}
+              </div>
+            )}
+            <div className="mt-6 flex flex-wrap justify-between gap-3">
+              <ActionButton action="cancel" onClick={() => setEditTarget(null)}>
+                Cancel
+              </ActionButton>
+              <ActionButton action="submit" onClick={handleEditSave}>
+                Save changes
+              </ActionButton>
             </div>
+          </div>
+        </div>
+      )}
 
-            {formError && (
-              <div className="mt-4 rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-xs text-red-100">
-                {formError}
-              </div>
-            )}
-            {bulkErrors.length > 0 && (
-              <div className="mt-4 rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-xs text-red-100">
-                <div className="font-semibold">JSON errors:</div>
-                <ul className="mt-2 list-disc space-y-1 pl-5">
-                  {bulkErrors.map((error) => (
-                    <li key={error}>{error}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {successMessage && (
-              <div className="mt-4 rounded-2xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-100">
-                {successMessage}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              className="mt-6 w-full rounded-2xl bg-[#2b59ff] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1f46d8]"
-            >
-              Save card
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleBulkSubmit} className="mt-6">
-            <p className="text-sm text-white/70">
-              Paste an array of card configs. All cards will share the selected
-              box and group ID.
+      {viewTarget && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center px-6 py-12">
+          <button
+            type="button"
+            aria-label="Close view dialog"
+            onClick={() => setViewTarget(null)}
+            className="fixed inset-0 bg-black/60"
+          />
+          <div className="relative z-10 w-full max-w-3xl rounded-3xl border border-white/10 bg-[var(--color-dark-bg)] p-6 shadow-2xl shadow-black/40">
+            <h2 className="text-lg font-semibold text-white">Card details</h2>
+            <p className="mt-2 text-sm text-white/70">
+              {viewTarget.config.type} • Group{" "}
+              {viewTarget.group_id || "—"} • Level {viewTarget.level}
             </p>
+            <div className="mt-6 opacity-70">
+              <fieldset disabled className="space-y-6">
+                <CardCreateFactory
+                  type={viewTarget.config.type as CardType}
+                  value={viewTarget.config}
+                  onChange={() => {}}
+                />
+              </fieldset>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <ActionButton action="cancel" onClick={() => setViewTarget(null)}>
+                Close
+              </ActionButton>
+            </div>
+          </div>
+        </div>
+      )}
 
-            <textarea
-              value={bulkJson}
-              onChange={(event) => setBulkJson(event.target.value)}
-              className="mt-4 min-h-[240px] w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-mono text-xs text-white outline-none transition focus:border-white/40"
-              placeholder='[\n  { "type": "standard", "front": "...", "back": "..." }\n]'
-            />
-
-            {formError && (
-              <div className="mt-4 rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-xs text-red-100">
-                {formError}
-              </div>
-            )}
-            {bulkErrors.length > 0 && (
-              <div className="mt-4 rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-xs text-red-100">
-                <div className="font-semibold">JSON errors:</div>
-                <ul className="mt-2 list-disc space-y-1 pl-5">
-                  {bulkErrors.map((error) => (
-                    <li key={error}>{error}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {successMessage && (
-              <div className="mt-4 rounded-2xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-100">
-                {successMessage}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              className="mt-6 w-full rounded-2xl bg-[#2b59ff] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1f46d8]"
-            >
-              Add cards
-            </button>
-          </form>
-        )}
-      </div>
-    </div>
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={handleMenuClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        PaperProps={{
+          sx: {
+            bgcolor: "var(--panel-surface)",
+            border: "1px solid var(--panel-border)",
+            boxShadow: "0 20px 40px rgba(0,0,0,0.35)",
+          },
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            if (!menuTarget) return;
+            setViewTarget(menuTarget);
+            handleMenuClose();
+          }}
+        >
+          View card
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (!menuTarget) return;
+            openEditModal(menuTarget);
+            handleMenuClose();
+          }}
+        >
+          Edit card
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (!menuTarget) return;
+            setDeleteTarget(menuTarget);
+            handleMenuClose();
+          }}
+          sx={{ color: "error.main" }}
+        >
+          Delete card
+        </MenuItem>
+      </Menu>
+    </>
   );
 }

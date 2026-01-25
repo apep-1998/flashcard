@@ -1,8 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch, getApiBaseUrl } from "@/lib/auth";
+import DataTable from "@/components/tables/DataTable";
+import CloneBoxModal from "@/components/modals/CloneBoxModal";
+import CreateBoxModal from "@/components/modals/CreateBoxModal";
+import TextInput from "@/components/forms/TextInput";
+import ActionButton from "@/components/buttons/ActionButton";
+import Breadcrumbs from "@mui/material/Breadcrumbs";
+import Box from "@mui/material/Box";
+import IconButton from "@mui/material/IconButton";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import Typography from "@mui/material/Typography";
 
 type BoxItem = {
   id: number;
@@ -38,7 +49,8 @@ export default function BoxesPage() {
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [activateTarget, setActivateTarget] = useState<BoxItem | null>(null);
   const [activateCount, setActivateCount] = useState("10");
-  const [menuTargetId, setMenuTargetId] = useState<number | null>(null);
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const [menuTarget, setMenuTarget] = useState<BoxItem | null>(null);
   const [deleteCardsTarget, setDeleteCardsTarget] = useState<BoxItem | null>(
     null,
   );
@@ -47,7 +59,6 @@ export default function BoxesPage() {
   const [shareCode, setShareCode] = useState("");
   const [cloneCode, setCloneCode] = useState("");
   const [isCloneOpen, setIsCloneOpen] = useState(false);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const totalBoxes = totalCount ?? boxes.length;
 
@@ -104,24 +115,22 @@ export default function BoxesPage() {
   }, [buildBoxesUrl, loadBoxes]);
 
   useEffect(() => {
-    setMenuTargetId(null);
+    setMenuAnchor(null);
+    setMenuTarget(null);
   }, [search]);
 
-  useEffect(() => {
-    if (!nextUrl || !sentinelRef.current) return;
-    const sentinel = sentinelRef.current;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry?.isIntersecting && nextUrl && !isLoadingMore) {
-          loadBoxes(nextUrl, true);
-        }
-      },
-      { rootMargin: "200px" },
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [isLoadingMore, loadBoxes, nextUrl]);
+  const handleTableScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      if (!nextUrl || isLoadingMore) return;
+      const target = event.currentTarget;
+      const distance =
+        target.scrollHeight - target.scrollTop - target.clientHeight;
+      if (distance < 220) {
+        loadBoxes(nextUrl, true);
+      }
+    },
+    [isLoadingMore, loadBoxes, nextUrl],
+  );
 
   const resetForm = () => {
     setName("");
@@ -289,310 +298,183 @@ export default function BoxesPage() {
     setIsCreateOpen(true);
   };
 
+  const handleMenuOpen = useCallback(
+    (event: React.MouseEvent<HTMLElement>, box: BoxItem) => {
+      setMenuAnchor(event.currentTarget);
+      setMenuTarget(box);
+    },
+    [],
+  );
+
+  const handleMenuClose = () => {
+    setMenuAnchor(null);
+    setMenuTarget(null);
+  };
+
+  const columns = useMemo(
+    () => [
+      {
+        key: "name",
+        label: "Box name",
+        minWidth: 240,
+        render: (box: BoxItem) => (
+          <Box>
+            <Typography variant="subtitle2" fontWeight={600}>
+              {box.name}
+            </Typography>
+            {box.description && (
+              <Typography variant="caption" color="text.secondary">
+                {box.description}
+              </Typography>
+            )}
+          </Box>
+        ),
+      },
+      { key: "total_cards", label: "Total" },
+      { key: "active_cards", label: "Active" },
+      {
+        key: "active_percent",
+        label: "Active %",
+        render: (box: BoxItem) =>
+          box.total_cards
+            ? `${((box.active_cards / box.total_cards) * 100).toFixed(1)}%`
+            : "0.00%",
+      },
+      { key: "finished_cards", label: "Finished" },
+      { key: "ready_cards", label: "Ready" },
+      {
+        key: "actions",
+        label: "Actions",
+        render: (box: BoxItem) => (
+          <IconButton
+            onClick={(event) => handleMenuOpen(event, box)}
+            aria-label="Box actions"
+            sx={{
+              bgcolor: "transparent",
+              color: "text.primary",
+              "&:hover": { bgcolor: "rgba(50, 56, 62, 0.6)" },
+            }}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+              <circle cx="5" cy="12" r="2" fill="currentColor" />
+              <circle cx="12" cy="12" r="2" fill="currentColor" />
+              <circle cx="19" cy="12" r="2" fill="currentColor" />
+            </svg>
+          </IconButton>
+        ),
+      },
+    ],
+    [handleMenuOpen],
+  );
+
   return (
     <>
-      <section className="flex h-[calc(100vh-14rem)] flex-col space-y-6 overflow-hidden">
-        <div className="flex h-full flex-col rounded-3xl border border-white/10 bg-white/5">
-          <div className="rounded-3xl p-4 backdrop-blur">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <span className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-white/60">
-                {totalBoxes} boxes
-              </span>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    resetForm();
-                    setIsCreateOpen((open) => !open);
-                  }}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-white shadow-lg shadow-blue-500/10 backdrop-blur transition hover:border-white/40 hover:bg-white/20"
-                  aria-label={isCreateOpen ? "Close new box form" : "Add new box"}
-                >
-                  <span className="text-2xl leading-none">+</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsCloneOpen(true)}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-white shadow-lg shadow-emerald-500/10 backdrop-blur transition hover:border-white/40 hover:bg-white/20"
-                  aria-label="Clone a box"
-                >
-                  <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
-                    <path
-                      d="M12 4v10m0 0 4-4m-4 4-4-4"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M5 16v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+          height: "calc(100vh - 8rem)",
+          overflow: "hidden",
+          bgcolor: "var(--color-dark-bg)",
+        }}
+      >
+        <Breadcrumbs sx={{ color: "text.secondary" }}>
+          <Link href="/panel/study">Study</Link>
+          <Typography color="text.primary">Boxes</Typography>
+        </Breadcrumbs>
 
-            <label className="mt-4 block text-sm text-white/70">
-              <span className="sr-only">Search by name</span>
-              <input
-                type="search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
-                placeholder="Search boxes"
-              />
-            </label>
-          </div>
+        <Box
+          sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 2,
+          }}
+        >
+          <Box>
+            <Typography variant="h5" fontWeight={700}>
+              Boxes
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {totalBoxes} boxes
+            </Typography>
+          </Box>
+          <Box sx={{ display: "flex", gap: 1.5 }}>
+            <ActionButton
+              action="create"
+              onClick={() => {
+                resetForm();
+                setIsCreateOpen(true);
+              }}
+            >
+              Create box
+            </ActionButton>
+            <ActionButton action="cancel" onClick={() => setIsCloneOpen(true)}>
+              Clone box
+            </ActionButton>
+          </Box>
+        </Box>
 
-          <div className="scrollbar-hidden flex-1 overflow-y-auto p-6">
-            <div className="space-y-4">
-              {isLoading && (
-                <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/60">
-                  Loading boxes...
-                </div>
-              )}
-              {!isLoading &&
-                boxes.map((box) => (
-                  <article
-                    key={box.id}
-                    className={`rounded-3xl border border-white/10 bg-[#0b1017] p-5 ${
-                      menuTargetId === box.id ? "relative z-40" : "relative z-0"
-                    }`}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-lg font-semibold">{box.name}</h3>
-                        {box.description && (
-                          <p className="mt-1 text-sm text-white/60">
-                            {box.description}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em] text-white/60">
-                        <div className="relative z-50">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setMenuTargetId(
-                                menuTargetId === box.id ? null : box.id,
-                              )
-                            }
-                            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/70 transition hover:border-white/40 hover:text-white"
-                            aria-label="Box actions"
-                          >
-                            •••
-                          </button>
-                          {menuTargetId === box.id && (
-                            <div className="absolute right-0 z-50 mt-2 w-44 rounded-2xl border border-white/10 bg-[#0f141b] p-2 text-xs uppercase tracking-[0.2em] text-white/70 shadow-2xl">
-                              <Link
-                                href={`/panel/boxes/${box.id}/cards`}
-                                onClick={() => setMenuTargetId(null)}
-                                className="flex items-center gap-2 rounded-xl px-3 py-2 transition hover:bg-white/10"
-                              >
-                                <span aria-hidden="true">📄</span>
-                                View cards
-                              </Link>
-                              <Link
-                                href={`/panel/boxes/${box.id}/cards?important=1`}
-                                onClick={() => setMenuTargetId(null)}
-                                className="flex items-center gap-2 rounded-xl px-3 py-2 transition hover:bg-white/10"
-                              >
-                                <span aria-hidden="true">⭐</span>
-                                Starred cards
-                              </Link>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setMenuTargetId(null);
-                                  setActivateTarget(box);
-                                  setActivateCount("10");
-                                }}
-                                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left transition hover:bg-white/10"
-                              >
-                                <span aria-hidden="true">⚡</span>
-                                Activate cards
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setMenuTargetId(null);
-                                  setDeleteCardsTarget(box);
-                                }}
-                                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left transition hover:bg-white/10"
-                              >
-                                <span aria-hidden="true">🧹</span>
-                                Clear cards
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setMenuTargetId(null);
-                                  setShareTarget(box);
-                                  setShareCode("");
-                                }}
-                                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left transition hover:bg-white/10"
-                              >
-                                <span aria-hidden="true">🔗</span>
-                                Share box
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setMenuTargetId(null);
-                                  handleEdit(box);
-                                }}
-                                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left transition hover:bg-white/10"
-                              >
-                                <span aria-hidden="true">✏️</span>
-                                Edit box
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setMenuTargetId(null);
-                                  setDeleteTarget(box);
-                                }}
-                                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-red-200 transition hover:bg-red-500/10"
-                              >
-                                <span aria-hidden="true">🗑️</span>
-                                Delete box
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+        <TextInput
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search boxes"
+          sx={{ borderRadius: 0.5 }}
+        />
 
-                    <div className="mt-4 grid gap-3 text-sm text-white/70 sm:grid-cols-5">
-                      <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-                        Total cards{" "}
-                        <span className="ml-2 text-white">
-                          {box.total_cards}
-                        </span>
-                      </div>
-                      <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-                        Active{" "}
-                        <span className="ml-2 text-white">
-                          {box.active_cards}
-                        </span>
-                      </div>
-                      <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-                        Active %{" "}
-                        <span className="ml-2 text-white">
-                          {box.total_cards
-                            ? ((box.active_cards / box.total_cards) * 100).toFixed(2)
-                            : "0.00"}
-                          %
-                        </span>
-                      </div>
-                      <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-                        Finished{" "}
-                        <span className="ml-2 text-white">
-                          {box.finished_cards}
-                        </span>
-                      </div>
-                      <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-                        Ready{" "}
-                        <span className="ml-2 text-white">
-                          {box.ready_cards}
-                        </span>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              {!isLoading && boxes.length === 0 && (
-                <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/60">
-                  No boxes match your search.
-                </div>
-              )}
-              {isLoadingMore && (
-                <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-xs uppercase tracking-[0.2em] text-white/60">
-                  Loading more...
-                </div>
-              )}
-              <div ref={sentinelRef} />
-              {error && (
-                <div className="rounded-3xl border border-red-400/40 bg-red-500/10 p-6 text-sm text-red-100">
-                  {error}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {isCreateOpen && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center px-6 py-12">
-          <button
-            type="button"
-            aria-label="Close new box form"
-            onClick={() => setIsCreateOpen(false)}
-            className="fixed inset-0 bg-black/60"
+        <Box sx={{ flexGrow: 1, minHeight: 0 }}>
+          <DataTable
+            title="Boxes"
+            columns={columns}
+            rows={boxes}
+            getRowKey={(row) => row.id}
+            loading={isLoading}
+            emptyMessage="No boxes match your search."
+            onScroll={handleTableScroll}
           />
-          <form
-            onSubmit={handleAddOrEditBox}
-            className="relative z-10 w-full max-w-lg rounded-3xl border border-white/10 bg-[#0f141b] p-6 shadow-2xl shadow-black/40"
-          >
-            <h2 className="text-lg font-semibold">
-              {editingBox ? "Edit box" : "Create new box"}
-            </h2>
-            <p className="mt-2 text-sm text-white/70">
-              Give your box a clear name and an optional description.
-            </p>
-
-            <label className="mt-6 block text-sm text-white/70">
-              Box name *
-              <input
-                type="text"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
-                placeholder="e.g. Product Design Glossary"
-              />
-            </label>
-
-            <label className="mt-4 block text-sm text-white/70">
-              Description (optional)
-              <textarea
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                className="mt-2 min-h-[120px] w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
-                placeholder="What will you practice in this box?"
-              />
-            </label>
-
-            {error && (
-              <div className="mt-4 rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-xs text-red-100">
+          {isLoadingMore && (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ mt: 2, textTransform: "uppercase", letterSpacing: 2 }}
+            >
+              Loading more...
+            </Typography>
+          )}
+          {error && (
+            <Box
+              sx={{
+                mt: 2,
+                p: 2,
+                borderRadius: 2,
+                border: "1px solid rgba(248, 113, 113, 0.4)",
+                bgcolor: "rgba(239, 68, 68, 0.12)",
+              }}
+            >
+              <Typography variant="body2" color="error">
                 {error}
-              </div>
-            )}
+              </Typography>
+            </Box>
+          )}
+        </Box>
+      </Box>
 
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsCreateOpen(false);
-                  resetForm();
-                }}
-                className="flex-1 rounded-2xl border border-white/20 px-4 py-3 text-sm font-semibold text-white/70 transition hover:text-white"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="flex-1 rounded-2xl bg-[#2b59ff] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1f46d8]"
-              >
-                {editingBox ? "Save changes" : "Add box"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      <CreateBoxModal
+        isOpen={isCreateOpen}
+        isEditing={Boolean(editingBox)}
+        name={name}
+        description={description}
+        error={error}
+        onClose={() => {
+          setIsCreateOpen(false);
+          resetForm();
+        }}
+        onSubmit={handleAddOrEditBox}
+        onNameChange={setName}
+        onDescriptionChange={setDescription}
+      />
 
       {deleteTarget && (
         <div className="fixed inset-0 z-40 flex items-center justify-center px-6 py-12">
@@ -605,45 +487,42 @@ export default function BoxesPage() {
             }}
             className="fixed inset-0 bg-black/60"
           />
-          <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-[#0f141b] p-6 shadow-2xl shadow-black/40">
+          <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-[#0B0D0E] p-6 shadow-2xl shadow-black/40">
             <h2 className="text-lg font-semibold">Delete box</h2>
             <p className="mt-2 text-sm text-white/70">
               Delete \"{deleteTarget.name}\"? This cannot be undone.
             </p>
-            <label className="mt-6 block text-sm text-white/70">
-              Type <span className="font-semibold text-white">confirm</span> to
-              continue
-              <input
-                value={deleteConfirm}
-                onChange={(event) => setDeleteConfirm(event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
-                placeholder="confirm"
-              />
-            </label>
+            <TextInput
+              label='Type "confirm" to continue'
+              value={deleteConfirm}
+              onChange={(event) => setDeleteConfirm(event.target.value)}
+              placeholder="confirm"
+              sx={{ mt: 3 }}
+            />
 
             <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                type="button"
+              <ActionButton
+                action="cancel"
                 onClick={() => {
                   setDeleteTarget(null);
                   setDeleteConfirm("");
                 }}
-                className="flex-1 rounded-2xl border border-white/20 px-4 py-3 text-sm font-semibold text-white/70 transition hover:text-white"
+                fullWidth
               >
                 Cancel
-              </button>
-              <button
-                type="button"
+              </ActionButton>
+              <ActionButton
+                action="delete"
                 onClick={() => {
                   handleDelete(deleteTarget.id);
                   setDeleteTarget(null);
                   setDeleteConfirm("");
                 }}
                 disabled={deleteConfirm.trim().toLowerCase() !== "confirm"}
-                className="flex-1 rounded-2xl bg-red-500/80 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                fullWidth
               >
                 Delete
-              </button>
+              </ActionButton>
             </div>
           </div>
         </div>
@@ -657,37 +536,35 @@ export default function BoxesPage() {
             onClick={() => setActivateTarget(null)}
             className="fixed inset-0 bg-black/60"
           />
-          <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-[#0f141b] p-6 shadow-2xl shadow-black/40">
+          <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-[#0B0D0E] p-6 shadow-2xl shadow-black/40">
             <h2 className="text-lg font-semibold">Activate cards</h2>
             <p className="mt-2 text-sm text-white/70">
               Choose how many groups to activate in "{activateTarget.name}".
             </p>
-            <label className="mt-6 block text-sm text-white/70">
-              Number of groups
-              <input
-                type="number"
-                min={1}
-                value={activateCount}
-                onChange={(event) => setActivateCount(event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
-              />
-            </label>
+            <TextInput
+              label="Number of groups"
+              type="number"
+              value={activateCount}
+              onChange={(event) => setActivateCount(event.target.value)}
+              inputProps={{ min: 1 }}
+              sx={{ mt: 3 }}
+            />
 
             <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                type="button"
+              <ActionButton
+                action="cancel"
                 onClick={() => setActivateTarget(null)}
-                className="flex-1 rounded-2xl border border-white/20 px-4 py-3 text-sm font-semibold text-white/70 transition hover:text-white"
+                fullWidth
               >
                 Cancel
-              </button>
-              <button
-                type="button"
+              </ActionButton>
+              <ActionButton
+                action="submit"
                 onClick={() => handleActivate(activateTarget.id)}
-                className="flex-1 rounded-2xl bg-[#2b59ff] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1f46d8]"
+                fullWidth
               >
                 Activate
-              </button>
+              </ActionButton>
             </div>
           </div>
         </div>
@@ -704,41 +581,38 @@ export default function BoxesPage() {
             }}
             className="fixed inset-0 bg-black/60"
           />
-          <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-[#0f141b] p-6 shadow-2xl shadow-black/40">
+          <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-[#0B0D0E] p-6 shadow-2xl shadow-black/40">
             <h2 className="text-lg font-semibold">Delete all cards</h2>
             <p className="mt-2 text-sm text-white/70">
               Delete every card in "{deleteCardsTarget.name}"? This cannot be
               undone.
             </p>
-            <label className="mt-6 block text-sm text-white/70">
-              Type <span className="font-semibold text-white">confirm</span> to
-              continue
-              <input
-                value={deleteCardsConfirm}
-                onChange={(event) => setDeleteCardsConfirm(event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
-                placeholder="confirm"
-              />
-            </label>
+            <TextInput
+              label='Type "confirm" to continue'
+              value={deleteCardsConfirm}
+              onChange={(event) => setDeleteCardsConfirm(event.target.value)}
+              placeholder="confirm"
+              sx={{ mt: 3 }}
+            />
             <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                type="button"
+              <ActionButton
+                action="cancel"
                 onClick={() => {
                   setDeleteCardsTarget(null);
                   setDeleteCardsConfirm("");
                 }}
-                className="flex-1 rounded-2xl border border-white/20 px-4 py-3 text-sm font-semibold text-white/70 transition hover:text-white"
+                fullWidth
               >
                 Cancel
-              </button>
-              <button
-                type="button"
+              </ActionButton>
+              <ActionButton
+                action="delete"
                 onClick={() => handleDeleteCards(deleteCardsTarget.id)}
                 disabled={deleteCardsConfirm.trim().toLowerCase() !== "confirm"}
-                className="flex-1 rounded-2xl bg-red-500/80 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                fullWidth
               >
                 Delete all
-              </button>
+              </ActionButton>
             </div>
           </div>
         </div>
@@ -752,74 +626,118 @@ export default function BoxesPage() {
             onClick={() => setShareTarget(null)}
             className="fixed inset-0 bg-black/60"
           />
-          <div className="relative z-10 w-full max-w-lg rounded-3xl border border-white/10 bg-[#0f141b] p-6 shadow-2xl shadow-black/40">
+          <div className="relative z-10 w-full max-w-lg rounded-3xl border border-white/10 bg-[#0B0D0E] p-6 shadow-2xl shadow-black/40">
             <h2 className="text-lg font-semibold">Share box</h2>
             <p className="mt-2 text-sm text-white/70">
               Generate a share code or paste one to clone a box.
             </p>
 
-            <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="mt-6 rounded-2xl border border-white/10 bg-[#000000] p-4">
               <div className="text-xs uppercase tracking-[0.2em] text-white/60">
                 Share code
               </div>
               <div className="mt-2 break-all text-sm text-white">
                 {shareCode || "—"}
               </div>
-              <button
-                type="button"
+              <ActionButton
+                action="submit"
                 onClick={() => handleShare(shareTarget.id)}
-                className="mt-4 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white"
+                sx={{ mt: 2 }}
               >
                 Generate code
-              </button>
+              </ActionButton>
             </div>
           </div>
         </div>
       )}
 
-      {isCloneOpen && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center px-6 py-12">
-          <button
-            type="button"
-            aria-label="Close clone dialog"
-            onClick={() => setIsCloneOpen(false)}
-            className="fixed inset-0 bg-black/60"
-          />
-          <div className="relative z-10 w-full max-w-lg rounded-3xl border border-white/10 bg-[#0f141b] p-6 shadow-2xl shadow-black/40">
-            <h2 className="text-lg font-semibold">Clone a box</h2>
-            <p className="mt-2 text-sm text-white/70">
-              Paste a share code to create a fresh copy of a box.
-            </p>
+      <CloneBoxModal
+        isOpen={isCloneOpen}
+        cloneCode={cloneCode}
+        onClose={() => setIsCloneOpen(false)}
+        onClone={handleClone}
+        onCodeChange={setCloneCode}
+      />
 
-            <label className="mt-6 block text-sm text-white/70">
-              Share code
-              <input
-                value={cloneCode}
-                onChange={(event) => setCloneCode(event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
-                placeholder="Paste share code"
-              />
-            </label>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => setIsCloneOpen(false)}
-                className="flex-1 rounded-2xl border border-white/20 px-4 py-3 text-sm font-semibold text-white/70 transition hover:text-white"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleClone}
-                className="flex-1 rounded-2xl bg-[#2b59ff] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1f46d8]"
-              >
-                Clone box
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={handleMenuClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        PaperProps={{
+          sx: {
+            bgcolor: "var(--panel-surface)",
+            border: "1px solid var(--panel-border)",
+            boxShadow: "0 20px 40px rgba(0,0,0,0.35)",
+          },
+        }}
+      >
+        <MenuItem
+          component={Link}
+          href={menuTarget ? `/panel/boxes/${menuTarget.id}/cards` : "#"}
+          onClick={handleMenuClose}
+        >
+          View cards
+        </MenuItem>
+        <MenuItem
+          component={Link}
+          href={
+            menuTarget ? `/panel/boxes/${menuTarget.id}/cards?important=1` : "#"
+          }
+          onClick={handleMenuClose}
+        >
+          Starred cards
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (!menuTarget) return;
+            setActivateTarget(menuTarget);
+            setActivateCount("10");
+            handleMenuClose();
+          }}
+        >
+          Activate cards
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (!menuTarget) return;
+            setDeleteCardsTarget(menuTarget);
+            handleMenuClose();
+          }}
+        >
+          Clear cards
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (!menuTarget) return;
+            setShareTarget(menuTarget);
+            setShareCode("");
+            handleMenuClose();
+          }}
+        >
+          Share box
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (!menuTarget) return;
+            handleEdit(menuTarget);
+            handleMenuClose();
+          }}
+        >
+          Edit box
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (!menuTarget) return;
+            setDeleteTarget(menuTarget);
+            handleMenuClose();
+          }}
+          sx={{ color: "error.main" }}
+        >
+          Delete box
+        </MenuItem>
+      </Menu>
     </>
   );
 }

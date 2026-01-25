@@ -1,9 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiFetch, getApiBaseUrl } from "@/lib/auth";
+import TextInput from "@/components/forms/TextInput";
+import ActionButton from "@/components/buttons/ActionButton";
 import type { CardType } from "@/lib/schemas/cards";
+import Box from "@mui/material/Box";
+import Checkbox from "@mui/material/Checkbox";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import Typography from "@mui/material/Typography";
 
 type ReadySummary = {
   count: number;
@@ -33,6 +41,7 @@ export default function StudyOptionsPage() {
   const [shuffle, setShuffle] = useState(true);
   const [cardCount, setCardCount] = useState(0);
   const [error, setError] = useState("");
+  const lastAvailableRef = useRef(0);
 
   useEffect(() => {
     if (!boxIdNumber) return;
@@ -82,10 +91,16 @@ export default function StudyOptionsPage() {
           throw new Error("Unable to refresh available cards.");
         }
         const data = (await response.json()) as ReadySummary;
+        const nextMax = Math.min(data.count, 50) || 1;
         setAvailableCount(data.count);
-        setCardCount((current) =>
-          Math.min(Math.max(current || 1, 1), Math.min(data.count, 50) || 1),
-        );
+        setCardCount((current) => {
+          if (!current) return nextMax;
+          if (lastAvailableRef.current && current === lastAvailableRef.current) {
+            return nextMax;
+          }
+          return Math.min(Math.max(current, 1), nextMax);
+        });
+        lastAvailableRef.current = nextMax;
       } catch (err) {
         setError(
           err instanceof Error
@@ -98,24 +113,6 @@ export default function StudyOptionsPage() {
   }, [boxIdNumber, selectedLevels, selectedTypes, summary]);
 
   const maxCount = Math.min(availableCount, 50);
-
-  const toggleLevel = (level: number) => {
-    setSelectedLevels((current) => {
-      if (current.includes(level)) {
-        return current.filter((value) => value !== level);
-      }
-      return [...current, level].sort((a, b) => a - b);
-    });
-  };
-
-  const toggleType = (type: CardType) => {
-    setSelectedTypes((current) => {
-      if (current.includes(type)) {
-        return current.filter((value) => value !== type);
-      }
-      return [...current, type];
-    });
-  };
 
   const canStart =
     availableCount > 0 &&
@@ -147,146 +144,187 @@ export default function StudyOptionsPage() {
     router.push(`/panel/study/${boxIdNumber}/session?${params.toString()}`);
   };
 
-  return (
-    <section className="flex h-[calc(100vh-14rem)] flex-col space-y-6 overflow-hidden">
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-        <h1 className="text-xl font-semibold">
-          Study options{box ? ` — ${box.name}` : ""}
-        </h1>
-        <p className="mt-2 text-sm text-white/60">
-          Choose which ready cards you want to review before starting.
-        </p>
-      </div>
+  const toggleGroupSx = {
+    bgcolor: "#0B0D0E",
+    borderRadius: 0.5,
+    "& .MuiToggleButton-root": {
+      color: "#EEEEEE",
+      borderColor: "var(--panel-border)",
+      textTransform: "none",
+      fontSize: 13,
+      fontWeight: 700,
+      letterSpacing: "0.02em",
+      fontFamily: "var(--font-app-sans), \"Segoe UI\", sans-serif",
+      px: 2,
+    },
+    "& .Mui-selected": {
+      bgcolor: "var(--color-dark-selected)",
+      color: "#EEEEEE",
+    },
+  } as const;
 
-      <div className="flex-1 space-y-4 overflow-y-auto scrollbar-hidden">
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 3,
+        height: "100%",
+        minHeight: 0,
+        bgcolor: "var(--color-dark-bg)",
+        overflow: "hidden",
+      }}
+    >
+      <Box
+        sx={{
+          borderRadius: 3,
+          border: "1px solid var(--panel-border)",
+          bgcolor: "var(--panel-surface)",
+          p: 3,
+        }}
+      >
+        <Typography variant="h5" fontWeight={700}>
+          Study options{box ? ` — ${box.name}` : ""}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Choose which ready cards you want to review before starting.
+        </Typography>
+      </Box>
+
+      <Box sx={{ flexGrow: 1, minHeight: 0, overflow: "hidden" }}>
         {error && (
-          <div className="rounded-3xl border border-red-400/40 bg-red-500/10 p-6 text-sm text-red-100">
-            {error}
-          </div>
+          <Box
+            sx={{
+              borderRadius: 3,
+              border: "1px solid rgba(248, 113, 113, 0.4)",
+              bgcolor: "rgba(239, 68, 68, 0.12)",
+              p: 3,
+            }}
+          >
+            <Typography variant="body2" color="error">
+              {error}
+            </Typography>
+          </Box>
         )}
         {!summary && !error && (
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/60">
-            Loading options...
-          </div>
+          <Box
+            sx={{
+              borderRadius: 3,
+              border: "1px solid var(--panel-border)",
+              bgcolor: "var(--panel-surface)",
+              p: 3,
+            }}
+          >
+            <Typography variant="body2" color="text.secondary">
+              Loading options...
+            </Typography>
+          </Box>
         )}
         {summary && (
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 space-y-6">
-            <div>
-              <div className="text-xs uppercase tracking-[0.2em] text-white/60">
-                Cards available
-              </div>
-              <div className="mt-2 text-3xl font-semibold">
+          <Box
+            sx={{
+              borderRadius: 3,
+              border: "1px solid var(--panel-border)",
+              bgcolor: "var(--color-dark-bg)",
+              p: 3,
+              display: "flex",
+              flexDirection: "column",
+              gap: 3,
+              maxWidth: 900,
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "baseline",
+                gap: 2,
+                direction: "ltr",
+              }}
+            >
+              <Typography variant="h3" fontWeight={700}>
                 {availableCount}
-              </div>
-            </div>
+              </Typography>
+              <Typography variant="h3" fontWeight={700} color="text.secondary">
+                cards available
+              </Typography>
+            </Box>
 
-            <div className="space-y-3">
-              <div className="text-xs uppercase tracking-[0.2em] text-white/60">
-                Levels ({levelsLabel})
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {summary.levels.map((level) => {
-                  const isActive = selectedLevels.includes(level);
-                  return (
-                    <button
-                      key={level}
-                      type="button"
-                      onClick={() => toggleLevel(level)}
-                      className={`rounded-full border px-3 py-1 text-xs uppercase tracking-[0.2em] transition ${
-                        isActive
-                          ? "border-white/40 bg-white/10 text-white"
-                          : "border-white/10 text-white/60 hover:text-white"
-                      }`}
-                    >
-                      Level {level}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <Box>
+              <ToggleButtonGroup
+                value={selectedLevels}
+                onChange={(_, value) => setSelectedLevels(value ?? [])}
+                sx={{ ...toggleGroupSx, flexWrap: "wrap" }}
+              >
+                {summary.levels.map((level) => (
+                  <ToggleButton key={level} value={level}>
+                    Level {level}
+                  </ToggleButton>
+                ))}
+              </ToggleButtonGroup>
+            </Box>
 
-            <div className="space-y-3">
-              <div className="text-xs uppercase tracking-[0.2em] text-white/60">
-                Card types ({typesLabel})
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {summary.types.map((type) => {
-                  const isActive = selectedTypes.includes(type);
-                  return (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => toggleType(type)}
-                      className={`rounded-full border px-3 py-1 text-xs uppercase tracking-[0.2em] transition ${
-                        isActive
-                          ? "border-white/40 bg-white/10 text-white"
-                          : "border-white/10 text-white/60 hover:text-white"
-                      }`}
-                    >
-                      {type}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <Box>
+              <ToggleButtonGroup
+                value={selectedTypes}
+                onChange={(_, value) =>
+                  setSelectedTypes((value as CardType[]) ?? [])
+                }
+                sx={{ ...toggleGroupSx, flexWrap: "wrap" }}
+              >
+                {summary.types.map((type) => (
+                  <ToggleButton key={type} value={type}>
+                    {type}
+                  </ToggleButton>
+                ))}
+              </ToggleButtonGroup>
+            </Box>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="block text-sm text-white/70">
-                Number of cards
-                <input
-                  type="number"
-                  min={1}
-                  max={maxCount || 1}
-                  value={cardCount}
-                  onChange={(event) =>
-                    setCardCount(
-                      Math.min(
-                        Math.max(Number(event.target.value), 1),
-                        maxCount || 1,
-                      ),
-                    )
-                  }
-                  className="mt-2 w-full rounded-2xl border border-white/10 bg-[#0f141b] px-4 py-3 text-white outline-none transition focus:border-white/40"
-                />
-              </label>
-              <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                <div>
-                  <div className="text-xs uppercase tracking-[0.2em] text-white/60">
-                    Shuffle cards
-                  </div>
-                  <div className="text-sm text-white/70">
-                    {shuffle ? "On" : "Off"}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShuffle((current) => !current)}
-                  className={`h-10 w-16 rounded-full border transition ${
-                    shuffle
-                      ? "border-white/40 bg-white/20"
-                      : "border-white/10 bg-white/5"
-                  }`}
-                >
-                  <span
-                    className={`block h-8 w-8 rounded-full bg-white transition ${
-                      shuffle ? "translate-x-7" : "translate-x-1"
-                    }`}
+            <Box
+              sx={{
+                display: "grid",
+                gap: 2,
+                gridTemplateColumns: { md: "1fr 1fr" },
+                alignItems: "center",
+              }}
+            >
+              <TextInput
+                label="Number of cards"
+                type="number"
+                value={cardCount}
+                onChange={(event) =>
+                  setCardCount(
+                    Math.min(
+                      Math.max(Number(event.target.value), 1),
+                      maxCount || 1,
+                    ),
+                  )
+                }
+                inputProps={{ min: 1, max: maxCount || 1 }}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={shuffle}
+                    onChange={() => setShuffle((current) => !current)}
+                    color="primary"
                   />
-                </button>
-              </div>
-            </div>
+                }
+                label="Shuffle cards"
+                sx={{ color: "text.secondary" }}
+              />
+            </Box>
 
-            <button
-              type="button"
+            <ActionButton
+              action="submit"
               onClick={handleStart}
               disabled={!canStart}
-              className="w-full rounded-2xl bg-[#2b59ff] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1f46d8] disabled:cursor-not-allowed disabled:opacity-60"
+              sx={{ alignSelf: "flex-start", minWidth: 220 }}
             >
               Start study session
-            </button>
-          </div>
+            </ActionButton>
+          </Box>
         )}
-      </div>
-    </section>
+      </Box>
+    </Box>
   );
 }

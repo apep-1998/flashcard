@@ -1,6 +1,8 @@
 import type { MultipleChoiceConfig } from "@/lib/schemas/cards";
 import ImageInput from "./ImageInput";
 import VoiceInput from "./VoiceInput";
+import TextArea from "@/components/forms/TextArea";
+import TextInput from "@/components/forms/TextInput";
 
 type Props = {
   value: MultipleChoiceConfig;
@@ -10,7 +12,9 @@ type Props = {
 const EMPTY_OPTION = "";
 
 export default function MultipleChoiceCreate({ value, onChange }: Props) {
-  const options = value.options.length ? value.options : [EMPTY_OPTION, EMPTY_OPTION];
+  const options = value.options.length
+    ? value.options
+    : [EMPTY_OPTION, EMPTY_OPTION];
 
   const updateOption = (index: number, next: string) => {
     const updated = [...options];
@@ -28,16 +32,15 @@ export default function MultipleChoiceCreate({ value, onChange }: Props) {
   };
 
   return (
-    <div className="space-y-4">
-      <label className="block text-sm text-white/70">
-        Question
-        <textarea
-          value={value.question}
-          onChange={(event) => onChange({ ...value, question: event.target.value })}
-          className="mt-2 min-h-[120px] w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
-          placeholder="What is the capital of Germany?"
-        />
-      </label>
+    <div className="flex flex-col gap-6">
+      <TextArea
+        label="Question"
+        value={value.question}
+        onChange={(event) => onChange({ ...value, question: event.target.value })}
+        rows={4}
+        className="resize-none"
+        placeholder="What is the capital of Germany?"
+      />
 
       <VoiceInput
         label="Voice file (optional)"
@@ -57,17 +60,14 @@ export default function MultipleChoiceCreate({ value, onChange }: Props) {
         onChange={(next) => onChange({ ...value, image_file_url: next })}
       />
 
-      <label className="block text-sm text-white/70">
-        Answer
-        <input
-          value={value.answer}
-          onChange={(event) => onChange({ ...value, answer: event.target.value })}
-          className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
-          placeholder="Berlin"
-        />
-      </label>
+      <TextInput
+        label="Answer"
+        value={value.answer}
+        onChange={(event) => onChange({ ...value, answer: event.target.value })}
+        placeholder="Berlin"
+      />
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-sm text-white/70">Options</span>
           <button
@@ -80,10 +80,10 @@ export default function MultipleChoiceCreate({ value, onChange }: Props) {
         </div>
         {options.map((option, index) => (
           <div key={`${index}-${option}`} className="flex items-center gap-2">
-            <input
+            <TextInput
+              label={`Option ${index + 1}`}
               value={option}
               onChange={(event) => updateOption(index, event.target.value)}
-              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-white outline-none transition focus:border-white/40"
               placeholder={`Option ${index + 1}`}
             />
             <button

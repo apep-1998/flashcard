@@ -1,33 +1,39 @@
 @import "tailwindcss";
 
 :root {
-  --background: #1c2615;
-  --foreground: #f7efe2;
-  --panel-bg: #1c2615;
-  --panel-surface: #26341c;
-  --panel-card: rgba(139, 174, 102, 0.2);
-  --panel-card-strong: rgba(139, 174, 102, 0.35);
-  --panel-border: rgba(235, 213, 171, 0.25);
-  --panel-muted: rgba(247, 239, 226, 0.82);
-  --panel-muted-strong: rgba(247, 239, 226, 0.65);
-  --panel-muted-soft: rgba(247, 239, 226, 0.5);
-  --accent: #e67e22;
-  --accent-strong: #c96a18;
+  --color-dark-bg: #000000;
+  --color-dark-surface: #0b0d0e;
+  --color-dark-selected: #32383e;
+  --color-action: #185ea5;
+  --color-table-head: #171a1c;
+  --background: var(--color-dark-bg);
+  --foreground: #eeeeee;
+  --panel-bg: var(--color-dark-bg);
+  --panel-surface: var(--color-dark-surface);
+  --panel-card: rgba(11, 13, 14, 0.6);
+  --panel-card-strong: rgba(11, 13, 14, 0.85);
+  --panel-border: rgba(238, 238, 238, 0.18);
+  --panel-muted: rgba(238, 238, 238, 0.82);
+  --panel-muted-strong: rgba(238, 238, 238, 0.62);
+  --panel-muted-soft: rgba(238, 238, 238, 0.45);
+  --accent: #00adb5;
+  --accent-strong: #009aa1;
 }
 
 :root[data-theme="light"] {
-  --background: #f3e7d2;
-  --foreground: #2b3a1d;
-  --panel-bg: #f3e7d2;
+  --background: #eeeeee;
+  --foreground: #222831;
+  --panel-bg: #eeeeee;
   --panel-surface: #ffffff;
-  --panel-card: rgba(98, 129, 65, 0.1);
-  --panel-card-strong: rgba(98, 129, 65, 0.2);
-  --panel-border: rgba(98, 129, 65, 0.22);
-  --panel-muted: rgba(43, 58, 29, 0.78);
-  --panel-muted-strong: rgba(43, 58, 29, 0.6);
-  --panel-muted-soft: rgba(43, 58, 29, 0.5);
-  --accent: #e67e22;
-  --accent-strong: #c96a18;
+  --panel-card: rgba(57, 62, 70, 0.08);
+  --panel-card-strong: rgba(57, 62, 70, 0.16);
+  --panel-border: rgba(34, 40, 49, 0.18);
+  --panel-muted: rgba(34, 40, 49, 0.78);
+  --panel-muted-strong: rgba(34, 40, 49, 0.6);
+  --panel-muted-soft: rgba(34, 40, 49, 0.48);
+  --accent: #00adb5;
+  --accent-strong: #009aa1;
+  --color-table-head: #f1f3f5;
 }
 
 @theme inline {

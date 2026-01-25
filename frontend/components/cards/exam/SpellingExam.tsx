@@ -1,6 +1,10 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import AudioButton from "@/components/cards/view/AudioButton";
+import ActionButton from "@/components/buttons/ActionButton";
+import TextInput from "@/components/forms/TextInput";
 import type { SpellingConfig } from "@/lib/schemas/cards";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
 
 type Props = {
   value: SpellingConfig;
@@ -52,75 +56,104 @@ export default function SpellingExam({ value, isBusy, onResult }: Props) {
   };
 
   return (
-    <form
+    <Box
+      component="form"
       onSubmit={handleSubmit}
-      className="relative flex h-full flex-col justify-between rounded-2xl border border-white/10 bg-white/5 p-6 text-center"
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        height: "100%",
+        borderRadius: 3,
+        border: "1px solid var(--panel-border)",
+        bgcolor: "var(--color-dark-bg)",
+        p: 3,
+        textAlign: "center",
+      }}
     >
       {review ? (
         <>
-          <div className="text-xs uppercase tracking-[0.2em] text-white/60">
+          <Typography variant="overline" color="text.secondary">
             Review the answer
-          </div>
-          <div className="mt-6 space-y-3 text-left">
-            <div className="rounded-2xl border border-rose-400/40 bg-rose-500/15 px-4 py-3 text-base font-semibold text-rose-100">
-              Your answer: {review.answer ? review.answer : "—"}
-            </div>
-            <div className="rounded-2xl border border-emerald-400/40 bg-emerald-500/15 px-4 py-3 text-base font-semibold text-emerald-100">
-              Correct: {value.spelling}
-            </div>
-          </div>
-          <button
-            type="button"
+          </Typography>
+          <Box sx={{ mt: 3, display: "flex", flexDirection: "column", gap: 2 }}>
+            <Box
+              sx={{
+                borderRadius: 2,
+                border: "1px solid rgba(248, 113, 113, 0.4)",
+                bgcolor: "rgba(239, 68, 68, 0.12)",
+                px: 3,
+                py: 2,
+              }}
+            >
+              <Typography variant="subtitle1" color="error.light">
+                Your answer: {review.answer ? review.answer : "—"}
+              </Typography>
+            </Box>
+            <Box
+              sx={{
+                borderRadius: 2,
+                border: "1px solid rgba(52, 211, 153, 0.4)",
+                bgcolor: "rgba(16, 185, 129, 0.12)",
+                px: 3,
+                py: 2,
+              }}
+            >
+              <Typography variant="subtitle1" color="success.light">
+                Correct: {value.spelling}
+              </Typography>
+            </Box>
+          </Box>
+          <ActionButton
+            action="submit"
             disabled={isBusy}
             onClick={handleFinishReview}
-            className="mt-6 rounded-full border border-white/20 bg-white/10 px-5 py-3 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            sx={{ mt: 3, alignSelf: "center" }}
           >
             Finish review
-          </button>
+          </ActionButton>
         </>
       ) : (
         <>
-          <div className="text-xs uppercase tracking-[0.2em] text-white/60">
+          <Typography variant="overline" color="text.secondary">
             Listen and spell
-          </div>
+          </Typography>
           {value.front ? (
-            <div className="mt-4 text-lg font-semibold text-white">
+            <Typography variant="h6" fontWeight={600} sx={{ mt: 2 }}>
               {value.front}
-            </div>
+            </Typography>
           ) : null}
           {value.voice_file_url ? (
-            <div className="mt-4 flex justify-center">
+            <Box sx={{ mt: 2, display: "flex", justifyContent: "center" }}>
               <AudioButton src={value.voice_file_url} autoPlay />
-            </div>
+            </Box>
           ) : (
-            <div className="mt-4 text-sm text-white/60">
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
               No audio file available.
-            </div>
+            </Typography>
           )}
 
-          <label className="mt-4 block text-sm text-white/70">
-            <span className="text-base font-semibold text-white">
-              Your answer
-            </span>
-            <input
+          <Box sx={{ mt: 3 }}>
+            <TextInput
+              label="Your answer"
               value={answer}
               onChange={(event) => setAnswer(event.target.value)}
               disabled={isBusy}
-              ref={inputRef}
-              className="mt-3 w-full rounded-2xl border border-white/10 bg-[#0f141b] px-4 py-3 text-base font-semibold text-white outline-none transition focus:border-white/40"
+              inputRef={inputRef}
               placeholder="Type the spelling"
             />
-          </label>
+          </Box>
 
-          <button
+          <ActionButton
+            action="submit"
             type="submit"
             disabled={isBusy}
-            className="mt-6 rounded-full border border-white/20 bg-white/10 px-5 py-3 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            sx={{ mt: 3, alignSelf: "center" }}
           >
             {isBusy ? "Checking..." : "Submit"}
-          </button>
+          </ActionButton>
         </>
       )}
-    </form>
+    </Box>
   );
 }

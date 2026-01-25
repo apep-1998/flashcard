@@ -3,6 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Container from "@mui/material/Container";
+import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
+import IconButton from "@mui/material/IconButton";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import Typography from "@mui/material/Typography";
+import ActionButton from "@/components/buttons/ActionButton";
 import SpellingExam from "@/components/cards/exam/SpellingExam";
 import GermanVerbConjugatorExam from "@/components/cards/exam/GermanVerbConjugatorExam";
 import { apiFetch, getApiBaseUrl } from "@/lib/auth";
@@ -70,7 +77,7 @@ export default function StudySessionPage() {
   const [failedSync, setFailedSync] = useState<
     Array<{ cardId: number; correct: boolean }>
   >([]);
-  const [showMenu, setShowMenu] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [isStarUpdating, setIsStarUpdating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CardItem | null>(null);
   const [editTarget, setEditTarget] = useState<CardItem | null>(null);
@@ -132,7 +139,7 @@ export default function StudySessionPage() {
   }, [loadCards]);
 
   useEffect(() => {
-    setShowMenu(false);
+    setMenuAnchor(null);
   }, [currentIndex]);
 
   useEffect(() => {
@@ -179,7 +186,6 @@ export default function StudySessionPage() {
       }
       setCards((current) => current.filter((item) => item.id !== card.id));
       setDeleteTarget(null);
-      setShowMenu(false);
       setCurrentIndex((prev) => Math.min(prev, Math.max(total - 2, 0)));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to delete card.");
@@ -214,7 +220,6 @@ export default function StudySessionPage() {
         current.map((item) => (item.id === updated.id ? updated : item)),
       );
       setEditTarget(null);
-      setShowMenu(false);
     } catch (err) {
       setEditError(
         err instanceof Error ? err.message : "Unable to update card.",
@@ -228,7 +233,9 @@ export default function StudySessionPage() {
     setIsStarUpdating(true);
     setCards((current) =>
       current.map((item) =>
-        item.id === currentCard.id ? { ...item, is_important: nextValue } : item,
+        item.id === currentCard.id
+          ? { ...item, is_important: nextValue }
+          : item,
       ),
     );
     try {
@@ -342,8 +349,35 @@ export default function StudySessionPage() {
     advanceCard();
   };
 
-  const bodyCardClass =
-    "flex h-full w-full max-w-4xl min-h-0 flex-col items-center justify-between gap-6 rounded-3xl border border-white/10 bg-[#0b1017] p-8 text-center overflow-auto scrollbar-hidden";
+  const cardContainerSx = {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 3,
+    width: "100%",
+    maxWidth: 900,
+    minHeight: 0,
+    height: "100%",
+    borderRadius: 3,
+    border: "1px solid var(--panel-border)",
+    bgcolor: "var(--panel-surface)",
+    p: 4,
+    textAlign: "center",
+    overflow: "auto",
+  } as const;
+  const activeCardSx = {
+    ...cardContainerSx,
+    alignItems: "stretch",
+    justifyContent: "stretch",
+    bgcolor: "var(--color-dark-bg)",
+    p: 0,
+    gap: 0,
+    "& > *": {
+      width: "100%",
+      height: "100%",
+    },
+  } as const;
   const allDone = !isLoading && !error && total > 0 && currentIndex >= total;
   const shouldHoldOnFinish =
     allDone && (pendingSyncCount > 0 || failedSync.length > 0);
@@ -367,10 +401,8 @@ export default function StudySessionPage() {
         boxSizing: "border-box",
       }}
     >
-      <Container
+      <Box
         id="exam-container"
-        disableGutters
-        maxWidth={false}
         sx={{
           display: "flex",
           flexDirection: "column",
@@ -378,324 +410,425 @@ export default function StudySessionPage() {
           justifyContent: "flex-start",
           width: 1,
           height: 1,
+          gap: 3,
+          p: { xs: 0, sm: 1.5, md: 3 },
         }}
       >
-        <Container
+        <Box
           id="exam-header"
           component="header"
-          disableGutters
-          maxWidth={false}
           sx={{
-            display: "flex",
-            flexDirection: "row",
+            display: "grid",
+            gridTemplateColumns: "1fr auto 1fr",
             alignItems: "center",
-            justifyContent: "space-between",
-            gap: 4,
-            width: 1,
-            padding: 2,
-            paddingX: 4,
-            borderBottom: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 24,
+            gap: 3,
+            width: "100%",
+            maxWidth: 900,
+            mx: "auto",
+            borderRadius: 3,
+            border: "1px solid var(--panel-border)",
+            bgcolor: "var(--panel-surface)",
+            p: 2.5,
           }}
         >
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-lg font-semibold">
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="h6" fontWeight={700} noWrap>
               {boxName ? boxName : `Box ${boxIdNumber || ""}`}
-            </h1>
-            <p className="text-xs text-white/70">
-              {total ? `${currentIndex + 1} of ${total}` : "No cards loaded"}
-            </p>
-          </div>
+            </Typography>
+          </Box>
+          <Typography variant="subtitle2" color="text.secondary" textAlign="center">
+            {total ? `${currentIndex + 1} of ${total}` : "No cards loaded"}
+          </Typography>
           {currentCard && (
-            <div className="flex flex-shrink-0 items-center gap-3">
-              <span className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-white/70">
-                Level {currentCard.level}
-              </span>
-              <button
-                type="button"
+            <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5 }}>
+              <Chip
+                label={`Level ${currentCard.level}`}
+                variant="outlined"
+                sx={{
+                  borderColor: "var(--panel-border)",
+                  color: "text.secondary",
+                }}
+              />
+              <IconButton
                 onClick={handleToggleImportant}
                 disabled={isStarUpdating}
-                className={`flex h-10 w-10 items-center justify-center rounded-full border transition ${
-                  currentCard.is_important
-                    ? "border-amber-400/60 bg-amber-400/15 text-amber-300"
-                    : "border-white/10 bg-white/5 text-white/50 hover:border-white/40 hover:text-white"
-                } ${isStarUpdating ? "cursor-not-allowed opacity-60" : ""}`}
-                aria-label={
-                  currentCard.is_important ? "Remove star" : "Mark as important"
-                }
+                sx={{
+                  border: "1px solid var(--panel-border)",
+                  bgcolor: "rgba(255,255,255,0.04)",
+                  color: currentCard.is_important
+                    ? "#FACC15"
+                    : "text.secondary",
+                  width: 40,
+                  height: 40,
+                  borderRadius: "50%",
+                  "&:hover": { bgcolor: "rgba(255,255,255,0.08)" },
+                }}
               >
-                <span className="text-lg leading-none">
-                  {currentCard.is_important ? "★" : "☆"}
-                </span>
-              </button>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setShowMenu((current) => !current)}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/70 transition hover:border-white/40 hover:text-white"
-                  aria-label="Card actions"
-                >
-                  •••
-                </button>
-                {showMenu && (
-                  <div className="absolute right-0 mt-2 w-36 rounded-2xl border border-white/10 bg-[#0f141b] p-2 text-xs uppercase tracking-[0.2em] text-white/70 shadow-xl">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowMenu(false);
-                        openEditModal(currentCard);
-                      }}
-                      className="w-full rounded-xl px-3 py-2 text-left transition hover:bg-white/10"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowMenu(false);
-                        setDeleteTarget(currentCard);
-                      }}
-                      className="w-full rounded-xl px-3 py-2 text-left text-red-200 transition hover:bg-red-500/10"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+                {currentCard.is_important ? "★" : "☆"}
+              </IconButton>
+              <IconButton
+                onClick={(event) => setMenuAnchor(event.currentTarget)}
+                sx={{
+                  border: "1px solid var(--panel-border)",
+                  bgcolor: "rgba(255,255,255,0.04)",
+                  color: "text.secondary",
+                  width: 40,
+                  height: 40,
+                  borderRadius: "50%",
+                  "&:hover": { bgcolor: "rgba(255,255,255,0.08)" },
+                }}
+              >
+                •••
+              </IconButton>
+            </Box>
           )}
-        </Container>
-        <Container
+        </Box>
+        <Box
           id="exam-body"
-          disableGutters
-          maxWidth={false}
           sx={{
             display: "flex",
             flexDirection: "column",
-            alignItems: "stretch",
+            alignItems: "center",
             justifyContent: "space-between",
-            gap: 4,
+            gap: 3,
             flexGrow: 1,
             width: 1,
             minHeight: 0,
           }}
         >
           {isLoading && (
-            <Container
-              id="exam-card-loading"
-              disableGutters
-              maxWidth={false}
-              className={bodyCardClass}
-            >
-              <div className="text-sm text-white/70">Loading cards...</div>
-            </Container>
+            <Box id="exam-card-loading" sx={cardContainerSx}>
+              <Typography variant="body2" color="text.secondary">
+                Loading cards...
+              </Typography>
+            </Box>
           )}
           {error && (
-            <Container
-              id="exam-card-error"
-              disableGutters
-              maxWidth={false}
-              className={bodyCardClass}
-            >
-              <div className="rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-                {error}
-              </div>
-            </Container>
+            <Box id="exam-card-error" sx={cardContainerSx}>
+              <Box
+                sx={{
+                  borderRadius: 2,
+                  border: "1px solid rgba(248, 113, 113, 0.4)",
+                  bgcolor: "rgba(239, 68, 68, 0.12)",
+                  px: 3,
+                  py: 2,
+                }}
+              >
+                <Typography variant="body2" color="error">
+                  {error}
+                </Typography>
+              </Box>
+            </Box>
           )}
           {!isLoading && !currentCard && !error && (
-            <Container
-              id="exam-card-empty"
-              disableGutters
-              maxWidth={false}
-              className={bodyCardClass}
-            >
-              <div className="text-sm text-white/70">
+            <Box id="exam-card-empty" sx={cardContainerSx}>
+              <Typography variant="body2" color="text.secondary">
                 No cards match this study setup.
-              </div>
-            </Container>
+              </Typography>
+            </Box>
           )}
           {shouldHoldOnFinish && (
-            <Container
-              id="exam-card-sync"
-              disableGutters
-              maxWidth={false}
-              className={bodyCardClass}
-            >
-              <div className="text-sm uppercase tracking-[0.2em] text-white/60">
+            <Box id="exam-card-sync" sx={cardContainerSx}>
+              <Typography variant="overline" color="text.secondary">
                 Finishing sync
-              </div>
-              <div className="text-sm text-white/70">
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
                 Saving your last answers. You can wait here or retry failed
                 updates.
-              </div>
+              </Typography>
               {pendingSyncCount > 0 && (
-                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
-                  Pending updates: {pendingSyncCount}
-                </div>
-              )}
-              {failedSync.length > 0 && (
-                <div className="rounded-2xl border border-rose-400/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
-                  Failed updates: {failedSync.length}
-                </div>
-              )}
-              {failedSync.length > 0 && (
-                <button
-                  type="button"
-                  onClick={retryFailedSync}
-                  className="rounded-full border border-white/20 bg-white/10 px-5 py-3 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white"
+                <Box
+                  sx={{
+                    borderRadius: 2,
+                    border: "1px solid var(--panel-border)",
+                    bgcolor: "rgba(255,255,255,0.04)",
+                    px: 3,
+                    py: 2,
+                  }}
                 >
-                  Retry failed updates
-                </button>
+                  <Typography variant="body2" color="text.secondary">
+                    Pending updates: {pendingSyncCount}
+                  </Typography>
+                </Box>
               )}
-            </Container>
+              {failedSync.length > 0 && (
+                <Box
+                  sx={{
+                    borderRadius: 2,
+                    border: "1px solid rgba(248, 113, 113, 0.4)",
+                    bgcolor: "rgba(239, 68, 68, 0.12)",
+                    px: 3,
+                    py: 2,
+                  }}
+                >
+                  <Typography variant="body2" color="error">
+                    Failed updates: {failedSync.length}
+                  </Typography>
+                </Box>
+              )}
+              {failedSync.length > 0 && (
+                <ActionButton action="submit" onClick={retryFailedSync}>
+                  Retry failed updates
+                </ActionButton>
+              )}
+            </Box>
           )}
           {!shouldHoldOnFinish && !isLoading && !error && currentCard && (
-            <Container
-              id="exam-card-active"
-              disableGutters
-              maxWidth={false}
-              className={bodyCardClass}
-            >
+            <Box id="exam-card-active" sx={activeCardSx}>
               {currentCard.config.type === "spelling" ? (
-                  <SpellingExam
-                    key={`spelling-${currentCard.id}`}
-                    value={currentCard.config as SpellingConfig}
-                    onResult={handleCardResult}
-                  />
+                <SpellingExam
+                  key={`spelling-${currentCard.id}`}
+                  value={currentCard.config as SpellingConfig}
+                  onResult={handleCardResult}
+                />
               ) : currentCard.config.type === "multiple-choice" ? (
-                  <MultipleChoiceExam
-                    key={`multiple-choice-${currentCard.id}`}
-                    value={currentCard.config as MultipleChoiceConfig}
-                    onResult={handleCardResult}
-                  />
+                <MultipleChoiceExam
+                  key={`multiple-choice-${currentCard.id}`}
+                  value={currentCard.config as MultipleChoiceConfig}
+                  onResult={handleCardResult}
+                />
               ) : currentCard.config.type === "standard" ? (
-                  <StandardExam
-                    key={`standard-${currentCard.id}`}
-                    value={currentCard.config as StandardConfig}
-                    onResult={handleCardResult}
-                  />
+                <StandardExam
+                  key={`standard-${currentCard.id}`}
+                  value={currentCard.config as StandardConfig}
+                  onResult={handleCardResult}
+                />
               ) : currentCard.config.type === "word-standard" ? (
-                  <WordStandardExam
-                    key={`word-standard-${currentCard.id}`}
-                    value={currentCard.config as WordStandardConfig}
-                    onResult={handleCardResult}
-                  />
+                <WordStandardExam
+                  key={`word-standard-${currentCard.id}`}
+                  value={currentCard.config as WordStandardConfig}
+                  onResult={handleCardResult}
+                />
               ) : currentCard.config.type === "german-verb-conjugator" ? (
-                  <GermanVerbConjugatorExam
-                    key={`german-verb-${currentCard.id}`}
-                    value={currentCard.config as GermanVerbConfig}
-                    onResult={handleCardResult}
-                  />
+                <GermanVerbConjugatorExam
+                  key={`german-verb-${currentCard.id}`}
+                  value={currentCard.config as GermanVerbConfig}
+                  onResult={handleCardResult}
+                />
               ) : currentCard.config.type === "ai-reviewer" ? (
-                  <AiReviewerExam
-                    key={`ai-reviewer-${currentCard.id}`}
-                    cardId={currentCard.id}
-                    value={currentCard.config as AiReviewerConfig}
-                    onResult={handleCardResult}
-                  />
+                <AiReviewerExam
+                  key={`ai-reviewer-${currentCard.id}`}
+                  cardId={currentCard.id}
+                  value={currentCard.config as AiReviewerConfig}
+                  onResult={handleCardResult}
+                />
               ) : (
-                <div className="space-y-3">
-                  <div className="text-sm text-white/70">
+                <Box sx={{ display: "grid", gap: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
                     Exam mode for this card type isn’t ready yet.
-                  </div>
-                  <button
-                    type="button"
+                  </Typography>
+                  <ActionButton
+                    action="cancel"
                     onClick={() => handleCardResult(false)}
-                    className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white"
                   >
                     Skip card
-                  </button>
-                </div>
+                  </ActionButton>
+                </Box>
               )}
-            </Container>
+            </Box>
           )}
-        </Container>
-      </Container>
+        </Box>
+      </Box>
       {showCorrect && (
-        <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center">
-          <div className="animate-pulse rounded-full border border-emerald-300/40 bg-emerald-500/20 px-8 py-4 text-sm uppercase tracking-[0.3em] text-emerald-100 shadow-xl shadow-emerald-500/20">
+        <Box
+          sx={{
+            pointerEvents: "none",
+            position: "fixed",
+            inset: 0,
+            zIndex: 40,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Box
+            sx={{
+              borderRadius: 999,
+              border: "1px solid rgba(52, 211, 153, 0.4)",
+              bgcolor: "rgba(16, 185, 129, 0.2)",
+              px: 4,
+              py: 2,
+              textTransform: "uppercase",
+              letterSpacing: "0.3em",
+              color: "rgba(167, 243, 208, 1)",
+              boxShadow: "0 10px 30px rgba(16, 185, 129, 0.2)",
+            }}
+          >
             Correct
-          </div>
-        </div>
+          </Box>
+        </Box>
       )}
       {deleteTarget && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center px-6 py-12">
-          <button
-            type="button"
-            aria-label="Close delete dialog"
+        <Box
+          sx={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 40,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            px: 3,
+            py: 6,
+          }}
+        >
+          <Box
             onClick={() => setDeleteTarget(null)}
-            className="fixed inset-0 bg-black/60"
+            sx={{ position: "fixed", inset: 0, bgcolor: "rgba(0,0,0,0.6)" }}
           />
-          <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-[#0f141b] p-6 shadow-2xl shadow-black/40">
-            <h2 className="text-lg font-semibold">Delete card</h2>
-            <p className="mt-2 text-sm text-white/70">
+          <Box
+            sx={{
+              position: "relative",
+              zIndex: 1,
+              width: "100%",
+              maxWidth: 480,
+              borderRadius: 3,
+              border: "1px solid var(--panel-border)",
+              bgcolor: "var(--color-dark-bg)",
+              p: 3,
+            }}
+          >
+            <Typography variant="h6" fontWeight={700}>
+              Delete card
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               Delete card #{deleteTarget.id}? This cannot be undone.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                type="button"
+            </Typography>
+            <Box
+              sx={{
+                mt: 3,
+                display: "flex",
+                gap: 2,
+                justifyContent: "space-between",
+              }}
+            >
+              <ActionButton
+                action="cancel"
                 onClick={() => setDeleteTarget(null)}
-                className="flex-1 rounded-2xl border border-white/20 px-4 py-3 text-sm font-semibold text-white/70 transition hover:text-white"
               >
                 Cancel
-              </button>
-              <button
-                type="button"
+              </ActionButton>
+              <ActionButton
+                action="delete"
                 onClick={() => handleDelete(deleteTarget)}
-                className="flex-1 rounded-2xl bg-red-500/80 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-500"
               >
                 Delete
-              </button>
-            </div>
-          </div>
-        </div>
+              </ActionButton>
+            </Box>
+          </Box>
+        </Box>
       )}
       {editTarget && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center px-6 py-12">
-          <button
-            type="button"
-            aria-label="Close edit dialog"
+        <Box
+          sx={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 40,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            px: 3,
+            py: 6,
+          }}
+        >
+          <Box
             onClick={() => setEditTarget(null)}
-            className="fixed inset-0 bg-black/60"
+            sx={{ position: "fixed", inset: 0, bgcolor: "rgba(0,0,0,0.6)" }}
           />
-          <div className="relative z-10 w-full max-w-2xl rounded-3xl border border-white/10 bg-[#0f141b] p-6 shadow-2xl shadow-black/40">
-            <h2 className="text-lg font-semibold">Edit card</h2>
-            <p className="mt-2 text-sm text-white/70">
+          <Box
+            sx={{
+              position: "relative",
+              zIndex: 1,
+              width: "100%",
+              maxWidth: 720,
+              borderRadius: 3,
+              border: "1px solid var(--panel-border)",
+              bgcolor: "var(--color-dark-bg)",
+              p: 3,
+            }}
+          >
+            <Typography variant="h6" fontWeight={700}>
+              Edit card
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               Update the card fields. Level and group cannot be changed here.
-            </p>
+            </Typography>
             {editConfig && (
-              <div className="mt-6">
+              <Box sx={{ mt: 3 }}>
                 <CardCreateFactory
                   type={editConfig.type as CardType}
                   value={editConfig}
                   onChange={setEditConfig}
                 />
-              </div>
+              </Box>
             )}
             {editError && (
-              <div className="mt-4 rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-xs text-red-100">
-                {editError}
-              </div>
+              <Box
+                sx={{
+                  mt: 2,
+                  borderRadius: 2,
+                  border: "1px solid rgba(248, 113, 113, 0.4)",
+                  bgcolor: "rgba(239, 68, 68, 0.12)",
+                  px: 3,
+                  py: 2,
+                }}
+              >
+                <Typography variant="body2" color="error">
+                  {editError}
+                </Typography>
+              </Box>
             )}
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => setEditTarget(null)}
-                className="flex-1 rounded-2xl border border-white/20 px-4 py-3 text-sm font-semibold text-white/70 transition hover:text-white"
-              >
+            <Box
+              sx={{
+                mt: 3,
+                display: "flex",
+                gap: 2,
+                justifyContent: "space-between",
+              }}
+            >
+              <ActionButton action="cancel" onClick={() => setEditTarget(null)}>
                 Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleEditSave}
-                className="flex-1 rounded-2xl bg-[#2b59ff] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1f46d8]"
-              >
+              </ActionButton>
+              <ActionButton action="submit" onClick={handleEditSave}>
                 Save changes
-              </button>
-            </div>
-          </div>
-        </div>
+              </ActionButton>
+            </Box>
+          </Box>
+        </Box>
       )}
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={() => setMenuAnchor(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        PaperProps={{
+          sx: {
+            bgcolor: "var(--panel-surface)",
+            border: "1px solid var(--panel-border)",
+            boxShadow: "0 20px 40px rgba(0,0,0,0.35)",
+          },
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            if (!currentCard) return;
+            openEditModal(currentCard);
+            setMenuAnchor(null);
+          }}
+        >
+          Edit card
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (!currentCard) return;
+            setDeleteTarget(currentCard);
+            setMenuAnchor(null);
+          }}
+          sx={{ color: "error.main" }}
+        >
+          Delete card
+        </MenuItem>
+      </Menu>
     </Container>
   );
 }

@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import AudioButton from "@/components/cards/view/AudioButton";
 import MarkdownText from "@/components/common/MarkdownText";
+import ActionButton from "@/components/buttons/ActionButton";
 import type { WordStandardConfig } from "@/lib/schemas/cards";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Typography from "@mui/material/Typography";
 
 type Props = {
   value: WordStandardConfig;
@@ -17,67 +21,97 @@ export default function WordStandardExam({ value, isBusy, onResult }: Props) {
   }, [value.word, value.back]);
 
   return (
-    <div className="relative flex h-full flex-col justify-between rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-      <div className="text-xs uppercase tracking-[0.2em] text-white/60">
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        height: "100%",
+        borderRadius: 3,
+        border: "1px solid var(--panel-border)",
+        bgcolor: "var(--color-dark-bg)",
+        p: 3,
+        textAlign: "center",
+      }}
+    >
+      <Typography variant="overline" color="text.secondary">
         Define the word
-      </div>
-      <div className="mt-5 space-y-4">
-        <div>
-          <div className="text-lg font-semibold text-white">
+      </Typography>
+      <Box sx={{ mt: 3, display: "grid", gap: 3 }}>
+        <Box>
+          <Typography variant="h6" fontWeight={600}>
             {value.word || "—"}
-          </div>
-          <div className="text-sm text-white/60">
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
             {value.part_of_speech || ""}
-          </div>
+          </Typography>
           {value.voice_file_url && (
-            <div className="mt-4 flex justify-center">
+            <Box sx={{ mt: 2, display: "flex", justifyContent: "center" }}>
               <AudioButton src={value.voice_file_url} autoPlay />
-            </div>
+            </Box>
           )}
-        </div>
+        </Box>
         {isFlipped && (
-          <div>
-            <div className="text-xs uppercase tracking-[0.2em] text-white/50">
+          <Box>
+            <Typography variant="overline" color="text.secondary">
               Back
-            </div>
-            <div className="mt-2 text-lg font-semibold text-white">
+            </Typography>
+            <Typography variant="h6" fontWeight={600} sx={{ mt: 1 }}>
               <MarkdownText content={value.back} />
-            </div>
-          </div>
+            </Typography>
+          </Box>
         )}
-      </div>
+      </Box>
 
-      <div className="mt-4 flex w-full items-center justify-center">
+      <Box sx={{ mt: 3, display: "flex", justifyContent: "center" }}>
         {!isFlipped ? (
-          <button
-            type="button"
+          <ActionButton
+            action="submit"
             disabled={isBusy}
             onClick={() => setIsFlipped(true)}
-            className="rounded-full border border-white/20 bg-white/10 px-6 py-3 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            sx={{ minWidth: 160 }}
           >
             Flip card
-          </button>
+          </ActionButton>
         ) : (
-          <div className="flex w-full items-center justify-between gap-4">
-            <button
+          <Box sx={{ display: "flex", gap: 2, width: "100%" }}>
+            <Button
               type="button"
               disabled={isBusy}
               onClick={() => onResult(true)}
-              className="flex-1 rounded-full border border-emerald-400/40 bg-emerald-500/20 px-5 py-3 text-xs uppercase tracking-[0.2em] text-emerald-100 transition hover:border-emerald-300 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              sx={{
+                flex: 1,
+                borderRadius: 2,
+                border: "1px solid rgba(52, 211, 153, 0.4)",
+                bgcolor: "rgba(16, 185, 129, 0.2)",
+                color: "rgba(167, 243, 208, 1)",
+                textTransform: "none",
+                fontWeight: 700,
+                "&:hover": { bgcolor: "rgba(16, 185, 129, 0.3)" },
+              }}
             >
               {isBusy ? "Saving..." : "Correct"}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               disabled={isBusy}
               onClick={() => onResult(false)}
-              className="flex-1 rounded-full border border-rose-400/40 bg-rose-500/20 px-5 py-3 text-xs uppercase tracking-[0.2em] text-rose-100 transition hover:border-rose-300 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              sx={{
+                flex: 1,
+                borderRadius: 2,
+                border: "1px solid rgba(248, 113, 113, 0.4)",
+                bgcolor: "rgba(239, 68, 68, 0.2)",
+                color: "rgba(254, 202, 202, 1)",
+                textTransform: "none",
+                fontWeight: 700,
+                "&:hover": { bgcolor: "rgba(239, 68, 68, 0.3)" },
+              }}
             >
               {isBusy ? "Saving..." : "Incorrect"}
-            </button>
-          </div>
+            </Button>
+          </Box>
         )}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }

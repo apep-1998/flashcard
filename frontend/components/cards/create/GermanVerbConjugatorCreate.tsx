@@ -1,5 +1,6 @@
 import type { GermanVerbConfig } from "@/lib/schemas/cards";
 import VoiceInput from "./VoiceInput";
+import TextInput from "@/components/forms/TextInput";
 
 type Props = {
   value: GermanVerbConfig;
@@ -17,16 +18,14 @@ const PRONOUN_FIELDS = [
 
 export default function GermanVerbConjugatorCreate({ value, onChange }: Props) {
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <label className="block text-sm text-white/70 md:col-span-2">
-        Verb
-        <input
-          value={value.verb}
-          onChange={(event) => onChange({ ...value, verb: event.target.value })}
-          className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
-          placeholder="gehen"
-        />
-      </label>
+    <div className="grid gap-6 md:grid-cols-2">
+      <TextInput
+        label="Verb"
+        value={value.verb}
+        onChange={(event) => onChange({ ...value, verb: event.target.value })}
+        placeholder="gehen"
+        sx={{ gridColumn: { md: "span 2" } }}
+      />
       <div className="md:col-span-2">
         <VoiceInput
           label="Voice file (optional)"
@@ -41,15 +40,15 @@ export default function GermanVerbConjugatorCreate({ value, onChange }: Props) {
         />
       </div>
       {PRONOUN_FIELDS.map(([key, label]) => (
-        <label key={key} className="block text-sm text-white/70">
-          {label}
-          <input
-            value={value[key]}
-            onChange={(event) => onChange({ ...value, [key]: event.target.value })}
-            className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
-            placeholder={`${label} form`}
-          />
-        </label>
+        <TextInput
+          key={key}
+          label={label}
+          value={value[key]}
+          onChange={(event) =>
+            onChange({ ...value, [key]: event.target.value })
+          }
+          placeholder={`${label} form`}
+        />
       ))}
     </div>
   );

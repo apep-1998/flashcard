@@ -1,8 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch, getApiBaseUrl } from "@/lib/auth";
+import ActionButton from "@/components/buttons/ActionButton";
+import DataTable from "@/components/tables/DataTable";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
 
 type BoxItem = {
   id: number;
@@ -22,133 +26,147 @@ export default function StudyPage() {
   const [boxes, setBoxes] = useState<BoxItem[]>([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [nextUrl, setNextUrl] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(15);
 
-  const loadBoxes = useCallback(async (url: string, append: boolean) => {
-    try {
-      if (append) {
-        setIsLoadingMore(true);
-      } else {
+  const loadBoxes = useCallback(
+    async (pageValue = page, pageSize = rowsPerPage) => {
+      try {
         setIsLoading(true);
-      }
-      const response = await apiFetch(url);
-      if (!response.ok) {
-        throw new Error("Unable to load study boxes.");
-      }
-      const data = (await response.json()) as PaginatedBoxes;
-      setBoxes((current) =>
-        append ? [...current, ...data.results] : data.results,
-      );
-      setNextUrl(data.next);
-      setTotalCount(data.count);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to load study boxes.",
-      );
-    } finally {
-      if (append) {
-        setIsLoadingMore(false);
-      } else {
+        const params = new URLSearchParams({
+          ready_only: "1",
+          page: String(pageValue + 1),
+          page_size: String(pageSize),
+        });
+        const response = await apiFetch(
+          `${getApiBaseUrl()}/api/boxes/?${params.toString()}`,
+        );
+        if (!response.ok) {
+          throw new Error("Unable to load study boxes.");
+        }
+        const data = (await response.json()) as PaginatedBoxes;
+        setBoxes(data.results);
+        setTotalCount(data.count);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Unable to load study boxes.",
+        );
+      } finally {
         setIsLoading(false);
       }
-    }
-  }, []);
+    },
+    [page, rowsPerPage],
+  );
 
   useEffect(() => {
-    const url = `${getApiBaseUrl()}/api/boxes/?ready_only=1`;
     setError("");
-    setBoxes([]);
-    setNextUrl(null);
-    setTotalCount(null);
-    loadBoxes(url, false);
+    loadBoxes();
   }, [loadBoxes]);
 
-  useEffect(() => {
-    if (!nextUrl || !sentinelRef.current) return;
-    const sentinel = sentinelRef.current;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry?.isIntersecting && nextUrl && !isLoadingMore) {
-          loadBoxes(nextUrl, true);
-        }
+  const columns = useMemo(
+    () => [
+      {
+        key: "name",
+        label: "Box",
+        minWidth: 220,
+        render: (box: BoxItem) => (
+          <Box>
+            <Typography variant="subtitle2" fontWeight={600}>
+              {box.name}
+            </Typography>
+            {box.description && (
+              <Typography variant="caption" color="text.secondary">
+                {box.description}
+              </Typography>
+            )}
+          </Box>
+        ),
       },
-      { rootMargin: "200px" },
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [isLoadingMore, loadBoxes, nextUrl]);
+      {
+        key: "ready_cards",
+        label: "Ready cards",
+        minWidth: 120,
+        render: (box: BoxItem) => box.ready_cards,
+      },
+      {
+        key: "action",
+        label: "Start",
+        minWidth: 140,
+        render: (box: BoxItem) => (
+          <ActionButton
+            action="submit"
+            component={Link}
+            href={`/panel/study/${box.id}/options`}
+            sx={{ minWidth: 120 }}
+          >
+            Start
+          </ActionButton>
+        ),
+      },
+    ],
+    [],
+  );
 
   return (
-    <section className="flex h-[calc(100vh-14rem)] flex-col space-y-6 overflow-hidden">
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-semibold">Study</h1>
-            <p className="text-sm text-white/60">
-              Choose a box with ready cards to start a study session.
-            </p>
-          </div>
-          <span className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-white/60">
-            {totalCount ?? boxes.length} ready boxes
-          </span>
-        </div>
-      </div>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 3,
+        height: "100%",
+        minHeight: 0,
+        bgcolor: "var(--color-dark-bg)",
+        overflow: "hidden",
+      }}
+    >
+      <Box
+        sx={{
+          borderRadius: 3,
+          border: "1px solid var(--panel-border)",
+          bgcolor: "var(--panel-surface)",
+          p: 3,
+        }}
+      >
+        <Typography variant="h5" fontWeight={700}>
+          Study
+        </Typography>
+      </Box>
 
-      <div className="scrollbar-hidden flex-1 space-y-4 overflow-y-auto">
-        {isLoading && (
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/60">
-            Loading ready boxes...
-          </div>
-        )}
-        {error && (
-          <div className="rounded-3xl border border-red-400/40 bg-red-500/10 p-6 text-sm text-red-100">
+      {error && (
+        <Box
+          sx={{
+            borderRadius: 3,
+            border: "1px solid rgba(248, 113, 113, 0.4)",
+            bgcolor: "rgba(239, 68, 68, 0.12)",
+            p: 3,
+          }}
+        >
+          <Typography variant="body2" color="error">
             {error}
-          </div>
-        )}
-        {boxes.map((box) => (
-          <article
-            key={box.id}
-            className="rounded-3xl border border-white/10 bg-[#0b1017] p-5"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold">{box.name}</h2>
-                {box.description && (
-                  <p className="mt-1 text-sm text-white/60">
-                    {box.description}
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-white/60">
-                  {box.ready_cards} ready
-                </span>
-                <Link
-                  href={`/panel/study/${box.id}/options`}
-                  className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white"
-                >
-                  Start
-                </Link>
-              </div>
-            </div>
-          </article>
-        ))}
-        {!isLoading && boxes.length === 0 && !error && (
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/60">
-            No boxes have ready cards right now.
-          </div>
-        )}
-        {isLoadingMore && (
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-xs uppercase tracking-[0.2em] text-white/60">
-            Loading more...
-          </div>
-        )}
-        <div ref={sentinelRef} />
-      </div>
-    </section>
+          </Typography>
+        </Box>
+      )}
+
+      <Box sx={{ flexGrow: 1, minHeight: 0 }}>
+        <DataTable
+          title="Ready boxes"
+          columns={columns}
+          rows={boxes}
+          getRowKey={(row) => row.id}
+          loading={isLoading}
+          emptyMessage="No boxes have ready cards right now."
+          page={page}
+          rowsPerPage={rowsPerPage}
+          count={totalCount ?? 0}
+          rowsPerPageOptions={[15, 20, 50]}
+          onPageChange={(_, nextPage) => setPage(nextPage)}
+          onRowsPerPageChange={(event) => {
+            setRowsPerPage(Number(event.target.value));
+            setPage(0);
+          }}
+        />
+      </Box>
+    </Box>
   );
 }

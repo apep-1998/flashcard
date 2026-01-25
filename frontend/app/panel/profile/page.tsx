@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import { apiFetch, getApiBaseUrl } from "@/lib/auth";
-import { getStoredTheme, setTheme, type Theme } from "@/lib/theme";
+import Box from "@mui/material/Box";
+import TextInput from "@/components/forms/TextInput";
 
 type ProfileResponse = {
   name: string;
@@ -27,7 +28,6 @@ export default function ProfilePage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [theme, setThemeState] = useState<Theme>("dark");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -49,10 +49,6 @@ export default function ProfilePage() {
     };
 
     loadProfile();
-    const stored = getStoredTheme();
-    if (stored) {
-      setThemeState(stored);
-    }
   }, []);
 
   const handleAvatarChange = async (
@@ -286,21 +282,6 @@ export default function ProfilePage() {
           <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
             Score: <span className="text-white">{MOCK_SCORE}</span>
           </div>
-          <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
-            Theme
-            <select
-              value={theme}
-              onChange={(event) => {
-                const next = event.target.value as Theme;
-                setThemeState(next);
-                setTheme(next);
-              }}
-              className="rounded-full border border-white/10 bg-[#0f141b] px-3 py-2 text-xs uppercase tracking-[0.2em] text-white outline-none transition focus:border-white/40"
-            >
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-            </select>
-          </label>
         </div>
 
         {message && (
@@ -324,38 +305,29 @@ export default function ProfilePage() {
           Use a strong password you do not reuse elsewhere.
         </p>
 
-        <div className="mt-6 space-y-4">
-          <label className="block text-sm text-white/70">
-            Current password
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(event) => setCurrentPassword(event.target.value)}
-              className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
-              placeholder="••••••••"
-            />
-          </label>
-          <label className="block text-sm text-white/70">
-            New password
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
-              className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
-              placeholder="••••••••"
-            />
-          </label>
-          <label className="block text-sm text-white/70">
-            Confirm new password
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
-              placeholder="••••••••"
-            />
-          </label>
-        </div>
+        <Box sx={{ mt: 3, display: "flex", flexDirection: "column", gap: 2 }}>
+          <TextInput
+            label="Current password"
+            type="password"
+            value={currentPassword}
+            onChange={(event) => setCurrentPassword(event.target.value)}
+            placeholder="••••••••"
+          />
+          <TextInput
+            label="New password"
+            type="password"
+            value={newPassword}
+            onChange={(event) => setNewPassword(event.target.value)}
+            placeholder="••••••••"
+          />
+          <TextInput
+            label="Confirm new password"
+            type="password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            placeholder="••••••••"
+          />
+        </Box>
 
         {error && (
           <div className="mt-4 rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-xs text-red-100">
@@ -370,7 +342,7 @@ export default function ProfilePage() {
 
         <button
           type="submit"
-          className="mt-6 w-full rounded-2xl bg-[#2b59ff] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1f46d8]"
+          className="mt-6 w-full rounded-2xl bg-[#185EA5] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#13508f]"
         >
           Update password
         </button>
@@ -418,7 +390,7 @@ export default function ProfilePage() {
               <button
                 type="button"
                 onClick={handleCropAndUpload}
-                className="flex-1 rounded-2xl bg-[#2b59ff] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1f46d8]"
+                className="flex-1 rounded-2xl bg-[#185EA5] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#13508f]"
               >
                 Crop & upload
               </button>

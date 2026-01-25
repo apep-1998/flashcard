@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { apiFetch, getApiBaseUrl } from "@/lib/auth";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import TextInput from "@/components/forms/TextInput";
 
 type Mode = "url" | "upload";
 
@@ -42,29 +45,42 @@ export default function ImageInput({ label, value, onChange }: Props) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm text-white/70">{label}</span>
-        <div className="flex gap-2 text-xs uppercase tracking-[0.2em] text-white/60">
-          {(["url", "upload"] as Mode[]).map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setMode(item)}
-              className={`rounded-full border px-3 py-1 transition ${
-                mode === item
-                  ? "border-white/40 text-white"
-                  : "border-white/10 text-white/60 hover:text-white"
-              }`}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
+        <ToggleButtonGroup
+          value={mode}
+          exclusive
+          onChange={(_, value) => {
+            if (value) setMode(value);
+          }}
+          sx={{
+            bgcolor: "#0B0D0E",
+            borderRadius: 0.5,
+            "& .MuiToggleButton-root": {
+              color: "#EEEEEE",
+              borderColor: "var(--panel-border)",
+              textTransform: "none",
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: "0.02em",
+              fontFamily: "var(--font-app-sans), \"Segoe UI\", sans-serif",
+              px: 1.5,
+              py: 0.4,
+            },
+            "& .Mui-selected": {
+              bgcolor: "var(--color-dark-selected)",
+              color: "#EEEEEE",
+            },
+          }}
+        >
+          <ToggleButton value="url">url</ToggleButton>
+          <ToggleButton value="upload">upload</ToggleButton>
+        </ToggleButtonGroup>
       </div>
 
       {mode === "url" && (
-        <input
+        <TextInput
+          label="Image URL"
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
           placeholder="https://cdn.example.com/image.png"
         />
       )}

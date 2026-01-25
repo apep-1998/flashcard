@@ -1,5 +1,7 @@
 import type { WordStandardConfig } from "@/lib/schemas/cards";
 import VoiceInput from "./VoiceInput";
+import TextArea from "@/components/forms/TextArea";
+import TextInput from "@/components/forms/TextInput";
 
 type Props = {
   value: WordStandardConfig;
@@ -8,27 +10,21 @@ type Props = {
 
 export default function WordStandardCreate({ value, onChange }: Props) {
   return (
-    <div className="space-y-4">
-      <label className="block text-sm text-white/70">
-        Word
-        <input
-          value={value.word}
-          onChange={(event) => onChange({ ...value, word: event.target.value })}
-          className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
-          placeholder="Photosynthesis"
-        />
-      </label>
-      <label className="block text-sm text-white/70">
-        Part of speech
-        <input
-          value={value.part_of_speech}
-          onChange={(event) =>
-            onChange({ ...value, part_of_speech: event.target.value })
-          }
-          className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
-          placeholder="noun"
-        />
-      </label>
+    <div className="flex flex-col gap-6">
+      <TextInput
+        label="Word"
+        value={value.word}
+        onChange={(event) => onChange({ ...value, word: event.target.value })}
+        placeholder="Photosynthesis"
+      />
+      <TextInput
+        label="Part of speech"
+        value={value.part_of_speech}
+        onChange={(event) =>
+          onChange({ ...value, part_of_speech: event.target.value })
+        }
+        placeholder="noun"
+      />
       <VoiceInput
         label="Voice file"
         value={value.voice_file_url ?? ""}
@@ -41,15 +37,14 @@ export default function WordStandardCreate({ value, onChange }: Props) {
         }
         required
       />
-      <label className="block text-sm text-white/70">
-        Back content
-        <textarea
-          value={value.back}
-          onChange={(event) => onChange({ ...value, back: event.target.value })}
-          className="mt-2 min-h-[120px] w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-white/40"
-          placeholder="Definition, usage, or explanation."
-        />
-      </label>
+      <TextArea
+        label="Back content"
+        value={value.back}
+        onChange={(event) => onChange({ ...value, back: event.target.value })}
+        rows={4}
+        className="resize-none"
+        placeholder="Definition, usage, or explanation."
+      />
     </div>
   );
 }

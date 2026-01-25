@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { apiFetch, getApiBaseUrl } from "@/lib/auth";
+import ActionButton from "@/components/buttons/ActionButton";
+import TextArea from "@/components/forms/TextArea";
 import type { AiReviewerConfig } from "@/lib/schemas/cards";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
 
 type ReviewData = {
   score: number;
@@ -93,108 +97,152 @@ export default function AiReviewerExam({
   const isLocked = isSubmitting || isBusy;
 
   return (
-    <form
+    <Box
+      component="form"
       onSubmit={handleSubmit}
-      className="flex h-full flex-col justify-between rounded-2xl border border-white/10 bg-white/5 p-6 text-center"
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        height: "100%",
+        borderRadius: 3,
+        border: "1px solid var(--panel-border)",
+        bgcolor: "var(--color-dark-bg)",
+        p: 3,
+        textAlign: "center",
+      }}
     >
       {review ? (
         <>
-          <div className="text-xs uppercase tracking-[0.2em] text-white/60">
+          <Typography variant="overline" color="text.secondary">
             AI review
-          </div>
-          <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-white/70">
-            <div className="flex items-center justify-between">
-              <div className="text-xs uppercase tracking-[0.2em] text-white/60">
+          </Typography>
+          <Box
+            sx={{
+              mt: 3,
+              borderRadius: 2,
+              border: "1px solid var(--panel-border)",
+              bgcolor: "rgba(255,255,255,0.04)",
+              p: 3,
+              textAlign: "left",
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <Typography variant="overline" color="text.secondary">
                 Score
-              </div>
-              <div className="text-lg font-semibold">
+              </Typography>
+              <Typography variant="h6" fontWeight={700}>
                 {review.score}/10
-              </div>
-            </div>
-            <div className="mt-4 space-y-2">
+              </Typography>
+            </Box>
+            <Box sx={{ mt: 2, display: "grid", gap: 1.5 }}>
               {review.mistakes.length === 0 ? (
-                <div className="text-sm text-white/60">
+                <Typography variant="body2" color="text.secondary">
                   No mistakes were detected.
-                </div>
+                </Typography>
               ) : (
                 review.mistakes.map((mistake, index) => (
-                  <div
+                  <Box
                     key={`${mistake.type}-${index}`}
-                    className="rounded-2xl border border-white/10 bg-[#0f141b] px-3 py-2"
+                    sx={{
+                      borderRadius: 2,
+                      border: "1px solid var(--panel-border)",
+                      bgcolor: "rgba(255,255,255,0.04)",
+                      px: 2,
+                      py: 1.5,
+                    }}
                   >
-                    <div className="text-xs uppercase tracking-[0.2em] text-white/50">
+                    <Typography variant="overline" color="text.secondary">
                       {mistake.type}
-                    </div>
-                    <div className="mt-1 text-sm text-white/70">
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
                       Incorrect:{" "}
-                      <span className="text-white">
+                      <Box component="span" sx={{ color: "text.primary" }}>
                         {mistake.incorrect?.toString() || "—"}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-sm text-white/70">
+                      </Box>
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
                       Correct:{" "}
-                      <span className="text-white">
+                      <Box component="span" sx={{ color: "text.primary" }}>
                         {mistake.correct?.toString() || "—"}
-                      </span>
-                    </div>
-                  </div>
+                      </Box>
+                    </Typography>
+                  </Box>
                 ))
               )}
-            </div>
-          </div>
-          <button
-            type="button"
+            </Box>
+          </Box>
+          <ActionButton
+            action="submit"
             disabled={isLocked}
             onClick={handleFinishReview}
-            className="mt-6 rounded-full border border-white/20 bg-white/10 px-5 py-3 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            sx={{ mt: 3, alignSelf: "center" }}
           >
             {isLocked ? "Saving..." : "Finish review"}
-          </button>
+          </ActionButton>
         </>
       ) : (
         <>
-          <div className="text-xs uppercase tracking-[0.2em] text-white/60">
+          <Typography variant="overline" color="text.secondary">
             AI review
-          </div>
-          <div className="mt-3 text-lg font-semibold text-white">
+          </Typography>
+          <Typography variant="h6" fontWeight={600} sx={{ mt: 2 }}>
             {value.question || "—"}
-          </div>
-          <label className="mt-6 block text-sm text-white/70">
-            <span className="text-base font-semibold text-white">
-              Your answer
-            </span>
-            <textarea
+          </Typography>
+          <Box sx={{ mt: 3 }}>
+            <TextArea
+              label="Your answer"
               value={answer}
               onChange={(event) => setAnswer(event.target.value)}
-              ref={inputRef}
-              className="mt-3 min-h-[180px] w-full resize-none rounded-2xl border border-white/10 bg-[#0f141b] px-4 py-3 text-base text-white outline-none transition focus:border-white/40"
+              inputRef={inputRef}
+              rows={6}
               placeholder="Write your answer here..."
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
                   if (!isLocked) {
-                    handleSubmit(event as unknown as React.FormEvent<HTMLFormElement>);
+                    handleSubmit(
+                      event as unknown as React.FormEvent<HTMLFormElement>,
+                    );
                   }
                 }
               }}
             />
-          </label>
+          </Box>
 
           {error && (
-            <div className="mt-4 rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-xs text-red-100">
-              {error}
-            </div>
+            <Box
+              sx={{
+                mt: 2,
+                borderRadius: 2,
+                border: "1px solid rgba(248, 113, 113, 0.4)",
+                bgcolor: "rgba(239, 68, 68, 0.12)",
+                px: 3,
+                py: 2,
+              }}
+            >
+              <Typography variant="body2" color="error">
+                {error}
+              </Typography>
+            </Box>
           )}
 
-          <button
+          <ActionButton
+            action="submit"
             type="submit"
             disabled={isLocked}
-            className="mt-6 rounded-full border border-white/20 bg-white/10 px-5 py-3 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            sx={{ mt: 3, alignSelf: "center" }}
           >
             {isSubmitting ? "Reviewing..." : "Submit"}
-          </button>
+          </ActionButton>
         </>
       )}
-    </form>
+    </Box>
   );
 }

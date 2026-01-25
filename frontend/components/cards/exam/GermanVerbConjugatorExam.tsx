@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import AudioButton from "@/components/cards/view/AudioButton";
+import ActionButton from "@/components/buttons/ActionButton";
+import TextInput from "@/components/forms/TextInput";
 import type { GermanVerbConfig } from "@/lib/schemas/cards";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
 
 type Props = {
   value: GermanVerbConfig;
@@ -63,102 +67,122 @@ export default function GermanVerbConjugatorExam({
   }, [value, review]);
 
   return (
-    <form
+    <Box
+      component="form"
       onSubmit={handleSubmit}
-      className="relative flex h-full flex-col justify-between rounded-2xl border border-white/10 bg-white/5 p-6 text-center"
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        height: "100%",
+        borderRadius: 3,
+        border: "1px solid var(--panel-border)",
+        bgcolor: "var(--color-dark-bg)",
+        p: 3,
+        textAlign: "center",
+      }}
     >
       {review ? (
         <>
-          <div className="text-xs uppercase tracking-[0.2em] text-white/60">
+          <Typography variant="overline" color="text.secondary">
             Review the conjugations
-          </div>
-          <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4 text-base text-white/70">
-            <div className="text-xs uppercase tracking-[0.2em] text-white/60">
+          </Typography>
+          <Box
+            sx={{
+              mt: 3,
+              borderRadius: 2,
+              border: "1px solid var(--panel-border)",
+              bgcolor: "rgba(255,255,255,0.04)",
+              p: 3,
+            }}
+          >
+            <Typography variant="overline" color="text.secondary">
               Expected conjugations
-            </div>
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
+            </Typography>
+            <Box sx={{ mt: 2, display: "grid", gap: 2, gridTemplateColumns: { md: "1fr 1fr" } }}>
               {fields.map((field) => {
                 const answer = answers[field.key] ?? "";
                 const isCorrect = normalize(answer) === normalize(field.expected);
                 return (
-                  <div
+                  <Box
                     key={field.key}
-                    className={`rounded-2xl border px-4 py-3 ${
-                      isCorrect
-                        ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-100"
-                        : "border-rose-400/40 bg-rose-500/10 text-rose-100"
-                    }`}
+                    sx={{
+                      borderRadius: 2,
+                      border: `1px solid ${
+                        isCorrect ? "rgba(52, 211, 153, 0.4)" : "rgba(248, 113, 113, 0.4)"
+                      }`,
+                      bgcolor: isCorrect
+                        ? "rgba(16, 185, 129, 0.12)"
+                        : "rgba(239, 68, 68, 0.12)",
+                      px: 3,
+                      py: 2,
+                      textAlign: "left",
+                    }}
                   >
-                    <div className="text-xs uppercase tracking-[0.2em] opacity-80">
+                    <Typography variant="overline" color="text.secondary">
                       {field.label}
-                    </div>
-                    <div className="mt-2 text-lg font-semibold">
+                    </Typography>
+                    <Typography variant="h6" fontWeight={600}>
                       {field.expected}
-                    </div>
-                    <div className="mt-1 text-sm opacity-80">
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
                       Your answer: {answer.trim() ? answer : "—"}
-                    </div>
-                  </div>
+                    </Typography>
+                  </Box>
                 );
               })}
-            </div>
-          </div>
-          <button
-            type="button"
+            </Box>
+          </Box>
+          <ActionButton
+            action="submit"
             disabled={isBusy}
             onClick={handleFinishReview}
-            className="mt-6 rounded-full border border-white/20 bg-white/10 px-5 py-3 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            sx={{ mt: 3, alignSelf: "center" }}
           >
             Finish review
-          </button>
+          </ActionButton>
         </>
       ) : (
         <>
-          <div className="text-xs uppercase tracking-[0.2em] text-white/60">
+          <Typography variant="overline" color="text.secondary">
             Conjugate the verb
-          </div>
-          <div className="mt-3 text-2xl font-semibold text-white">
+          </Typography>
+          <Typography variant="h4" fontWeight={700} sx={{ mt: 1 }}>
             {value.verb || "—"}
-          </div>
+          </Typography>
           {value.voice_file_url && (
-            <div className="mt-4 flex justify-center">
+            <Box sx={{ mt: 2, display: "flex", justifyContent: "center" }}>
               <AudioButton src={value.voice_file_url} autoPlay />
-            </div>
+            </Box>
           )}
-          <div className="text-sm text-white/60">
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             Leave blank to review the correct answers.
-          </div>
-          <div className="mt-5 grid gap-3 text-left md:grid-cols-2">
+          </Typography>
+          <Box sx={{ mt: 3, display: "grid", gap: 2, gridTemplateColumns: { md: "1fr 1fr" } }}>
             {fields.map((field) => (
-              <label
+              <TextInput
                 key={field.key}
-                className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70"
-              >
-                <span className="text-xs uppercase tracking-[0.2em] text-white/60">
-                  {field.label}
-                </span>
-                <input
-                  value={answers[field.key] ?? ""}
-                  onChange={(event) =>
-                    handleChange(field.key, event.target.value)
-                  }
-                  disabled={isBusy}
-                  ref={field.key === "ich" ? ichRef : undefined}
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-[#0f141b] px-3 py-2 text-base font-semibold text-white outline-none transition focus:border-white/40"
-                  placeholder="Type conjugation"
-                />
-              </label>
+                label={field.label}
+                value={answers[field.key] ?? ""}
+                onChange={(event) =>
+                  handleChange(field.key, event.target.value)
+                }
+                disabled={isBusy}
+                inputRef={field.key === "ich" ? ichRef : undefined}
+                placeholder="Type conjugation"
+              />
             ))}
-          </div>
-          <button
+          </Box>
+          <ActionButton
+            action="submit"
             type="submit"
             disabled={isBusy}
-            className="mt-6 rounded-full border border-white/20 bg-white/10 px-5 py-3 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:border-white/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            sx={{ mt: 3, alignSelf: "center" }}
           >
             {isBusy ? "Saving..." : "Evaluate"}
-          </button>
+          </ActionButton>
         </>
       )}
-    </form>
+    </Box>
   );
 }
