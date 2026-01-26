@@ -27,7 +27,7 @@ export default function PanelLayout({
           flexDirection: "column",
           height: "100vh",
           px: { xs: 2, md: 3 },
-          pt: { xs: 9, md: 7 },
+          pt: { xs: 2, md: 7 },
           pb: { xs: 2, md: 3 },
           minWidth: 0,
           overflow: "hidden",
