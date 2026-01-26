@@ -192,6 +192,7 @@ export default function PanelDrawer() {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isDesktopOpen, setIsDesktopOpen] = useState(true);
   const [mode, setMode] = useState<Theme>("dark");
   const [profile, setProfile] = useState<{
     username?: string;
@@ -216,6 +217,7 @@ export default function PanelDrawer() {
 
   useEffect(() => {
     setMobileOpen(false);
+    setIsDesktopOpen(true);
   }, [isDesktop]);
 
   useEffect(() => {
@@ -399,18 +401,31 @@ export default function PanelDrawer() {
         </Toolbar>
       </AppBar>
       <IconButton
-        onClick={handleToggle}
+        onClick={() => {
+          if (isDesktop) {
+            setIsDesktopOpen((prev) => !prev);
+          } else {
+            handleToggle();
+          }
+        }}
         aria-label="Toggle navigation"
         sx={{
           position: "fixed",
           top: 16,
-          left: 16,
+          left: {
+            xs: 16,
+            md: isDesktopOpen ? drawerWidth + 16 : 16,
+          },
           zIndex: (theme) => theme.zIndex.drawer + 2,
           bgcolor: "var(--panel-surface)",
           color: "var(--foreground)",
           border: "1px solid var(--panel-border)",
           "&:hover": { bgcolor: "var(--panel-card)" },
-          display: { xs: mobileOpen ? "none" : "inline-flex", md: "none" },
+          display: {
+            xs: mobileOpen ? "none" : "inline-flex",
+            md: "inline-flex",
+          },
+          transition: "left 200ms ease",
         }}
       >
         <MenuIcon />
@@ -418,14 +433,15 @@ export default function PanelDrawer() {
       <Box
         component="nav"
         sx={{
-          width: { md: drawerWidth },
-          flexShrink: { md: 0 },
+          width: { md: isDesktopOpen ? drawerWidth : 0 },
+          flexShrink: { md: isDesktopOpen ? 0 : 1 },
+          transition: "width 200ms ease",
         }}
         aria-label="Panel navigation"
       >
         <Drawer
-          variant={isDesktop ? "permanent" : "temporary"}
-          open={isDesktop ? true : mobileOpen}
+          variant={isDesktop ? "persistent" : "temporary"}
+          open={isDesktop ? isDesktopOpen : mobileOpen}
           onClose={handleToggle}
           ModalProps={{ keepMounted: true }}
           sx={{
