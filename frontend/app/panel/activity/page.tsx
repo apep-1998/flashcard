@@ -327,87 +327,25 @@ export default function ActivityPage() {
         </Box>
       </Box>
 
-      {error && (
-        <Box
-          sx={{
-            borderRadius: 3,
-            border: "1px solid rgba(248, 113, 113, 0.4)",
-            bgcolor: "rgba(239, 68, 68, 0.12)",
-            p: 3,
-          }}
-        >
-          <Typography variant="body2" color="error">
-            {error}
-          </Typography>
-        </Box>
-      )}
-
-      {tab === "charts" ? (
-        isLoading ? (
+      <Box sx={{ flexGrow: 1, minHeight: 0, overflowY: "auto", pr: 1 }}>
+        {error && (
           <Box
             sx={{
               borderRadius: 3,
-              border: "1px solid var(--panel-border)",
-              bgcolor: "var(--panel-surface)",
+              border: "1px solid rgba(248, 113, 113, 0.4)",
+              bgcolor: "rgba(239, 68, 68, 0.12)",
               p: 3,
+              mb: 3,
             }}
           >
-            <Typography variant="body2" color="text.secondary">
-              Loading activity...
+            <Typography variant="body2" color="error">
+              {error}
             </Typography>
           </Box>
-        ) : (
-          <Box sx={{ display: "grid", gap: 3 }}>
-            <Box
-              sx={{
-                borderRadius: 3,
-                border: "1px solid var(--panel-border)",
-                bgcolor: "var(--panel-surface)",
-                p: 3,
-              }}
-            >
-              <Typography variant="overline" color="text.secondary">
-                Activated cards
-              </Typography>
-              <Box sx={{ mt: 2, height: 280 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={activatedSeries}>
-                    <CartesianGrid
-                      stroke="rgba(255,255,255,0.08)"
-                      strokeDasharray="4 6"
-                    />
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fill: "rgba(255,255,255,0.6)", fontSize: 11 }}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <YAxis
-                      tick={{ fill: "rgba(255,255,255,0.6)", fontSize: 11 }}
-                      tickLine={false}
-                      axisLine={false}
-                      width={32}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: "#0f141b",
-                        borderRadius: 12,
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        color: "white",
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="value"
-                      stroke="#38bdf8"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </Box>
-            </Box>
+        )}
 
+        {tab === "charts" ? (
+          isLoading ? (
             <Box
               sx={{
                 borderRadius: 3,
@@ -416,129 +354,194 @@ export default function ActivityPage() {
                 p: 3,
               }}
             >
-              <Typography variant="overline" color="text.secondary">
-                Checked cards
+              <Typography variant="body2" color="text.secondary">
+                Loading activity...
               </Typography>
-              <Box sx={{ mt: 2, height: 280 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={checkedSeries}>
-                    <CartesianGrid
-                      stroke="rgba(255,255,255,0.08)"
-                      strokeDasharray="4 6"
-                    />
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fill: "rgba(255,255,255,0.6)", fontSize: 11 }}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <YAxis
-                      tick={{ fill: "rgba(255,255,255,0.6)", fontSize: 11 }}
-                      tickLine={false}
-                      axisLine={false}
-                      width={32}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: "#0f141b",
-                        borderRadius: 12,
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        color: "white",
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="value"
-                      stroke="#22c55e"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </Box>
             </Box>
-
-            <Box
-              sx={{
-                borderRadius: 3,
-                border: "1px solid var(--panel-border)",
-                bgcolor: "var(--panel-surface)",
-                p: 3,
-              }}
-            >
-              <Typography variant="overline" color="text.secondary">
-                Checked levels
-              </Typography>
-              <Box sx={{ mt: 2, height: 320 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={levelSeries}>
-                    <CartesianGrid
-                      stroke="rgba(255,255,255,0.08)"
-                      strokeDasharray="4 6"
-                    />
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fill: "rgba(255,255,255,0.6)", fontSize: 11 }}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <YAxis
-                      tick={{ fill: "rgba(255,255,255,0.6)", fontSize: 11 }}
-                      tickLine={false}
-                      axisLine={false}
-                      width={32}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: "#0f141b",
-                        borderRadius: 12,
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        color: "white",
-                      }}
-                    />
-                    <Legend wrapperStyle={{ color: "rgba(255,255,255,0.6)" }} />
-                    {levelKeys.map((key, index) => (
-                      <Bar
-                        key={key}
-                        dataKey={key}
-                        stackId="levels"
-                        fill={
-                          [
-                            "#38bdf8",
-                            "#60a5fa",
-                            "#818cf8",
-                            "#a78bfa",
-                            "#f472b6",
-                            "#f59e0b",
-                            "#f97316",
-                            "#ef4444",
-                            "#22c55e",
-                          ][index % 9]
-                        }
-                        radius={
-                          index === levelKeys.length - 1 ? [6, 6, 0, 0] : 0
-                        }
-                        name={key.replace("level_", "Level ")}
+          ) : (
+            <Box sx={{ display: "grid", gap: 3 }}>
+              <Box
+                sx={{
+                  borderRadius: 3,
+                  border: "1px solid var(--panel-border)",
+                  bgcolor: "var(--panel-surface)",
+                  p: 3,
+                }}
+              >
+                <Typography variant="overline" color="text.secondary">
+                  Activated cards
+                </Typography>
+                <Box sx={{ mt: 2, height: 280 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={activatedSeries}>
+                      <CartesianGrid
+                        stroke="rgba(255,255,255,0.08)"
+                        strokeDasharray="4 6"
                       />
-                    ))}
-                  </BarChart>
-                </ResponsiveContainer>
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fill: "rgba(255,255,255,0.6)", fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        tick={{ fill: "rgba(255,255,255,0.6)", fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={false}
+                        width={32}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          background: "#0f141b",
+                          borderRadius: 12,
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          color: "white",
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke="#38bdf8"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </Box>
+              </Box>
+
+              <Box
+                sx={{
+                  borderRadius: 3,
+                  border: "1px solid var(--panel-border)",
+                  bgcolor: "var(--panel-surface)",
+                  p: 3,
+                }}
+              >
+                <Typography variant="overline" color="text.secondary">
+                  Checked cards
+                </Typography>
+                <Box sx={{ mt: 2, height: 280 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={checkedSeries}>
+                      <CartesianGrid
+                        stroke="rgba(255,255,255,0.08)"
+                        strokeDasharray="4 6"
+                      />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fill: "rgba(255,255,255,0.6)", fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        tick={{ fill: "rgba(255,255,255,0.6)", fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={false}
+                        width={32}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          background: "#0f141b",
+                          borderRadius: 12,
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          color: "white",
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke="#22c55e"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </Box>
+              </Box>
+
+              <Box
+                sx={{
+                  borderRadius: 3,
+                  border: "1px solid var(--panel-border)",
+                  bgcolor: "var(--panel-surface)",
+                  p: 3,
+                }}
+              >
+                <Typography variant="overline" color="text.secondary">
+                  Checked levels
+                </Typography>
+                <Box sx={{ mt: 2, height: 320 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={levelSeries}>
+                      <CartesianGrid
+                        stroke="rgba(255,255,255,0.08)"
+                        strokeDasharray="4 6"
+                      />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fill: "rgba(255,255,255,0.6)", fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        tick={{ fill: "rgba(255,255,255,0.6)", fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={false}
+                        width={32}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          background: "#0f141b",
+                          borderRadius: 12,
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          color: "white",
+                        }}
+                      />
+                      <Legend wrapperStyle={{ color: "rgba(255,255,255,0.6)" }} />
+                      {levelKeys.map((key, index) => (
+                        <Bar
+                          key={key}
+                          dataKey={key}
+                          stackId="levels"
+                          fill={
+                            [
+                              "#38bdf8",
+                              "#60a5fa",
+                              "#818cf8",
+                              "#a78bfa",
+                              "#f472b6",
+                              "#f59e0b",
+                              "#f97316",
+                              "#ef4444",
+                              "#22c55e",
+                            ][index % 9]
+                          }
+                          radius={
+                            index === levelKeys.length - 1 ? [6, 6, 0, 0] : 0
+                          }
+                          name={key.replace("level_", "Level ")}
+                        />
+                      ))}
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Box>
               </Box>
             </Box>
+          )
+        ) : (
+          <Box sx={{ minHeight: 0 }}>
+            <DataTable
+              title="Most challenging cards"
+              columns={challengingColumns}
+              rows={challengingRows}
+              getRowKey={(row) => `${row.card_id}-${row.rank}`}
+              loading={isChallengingLoading}
+              emptyMessage="No challenging cards yet."
+            />
           </Box>
-        )
-      ) : (
-        <Box sx={{ flexGrow: 1, minHeight: 0 }}>
-          <DataTable
-            title="Most challenging cards"
-            columns={challengingColumns}
-            rows={challengingRows}
-            getRowKey={(row) => `${row.card_id}-${row.rank}`}
-            loading={isChallengingLoading}
-            emptyMessage="No challenging cards yet."
-          />
-        </Box>
-      )}
+        )}
+      </Box>
     </Box>
   );
 }
